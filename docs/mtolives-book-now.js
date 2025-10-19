@@ -43,6 +43,17 @@
   const FP_LOCAL_BASE = '/widgets/mtolives-book-now/vendor/flatpickr';
   const FP_CDN_BASE   = 'https://cdn.jsdelivr.net/npm/flatpickr@4.6.13';
 
+
+  // put near the top where you define Flatpickr paths
+const FP_BASE = 'https://cdn.jsdelivr.net/npm/flatpickr';
+
+once('flatpickr-css', () => loadCss(`${FP_BASE}/dist/flatpickr.min.css`));
+await loadScript(`${FP_BASE}/dist/flatpickr.min.js`);
+await loadScript(`${FP_BASE}/dist/plugins/rangePlugin.js`);
+
+  
+  
+  
   // Load calendar CSS globally (popup renders in <body>, not shadow)
   once('flatpickr-css', () =>
     loadCssWithFallback(
