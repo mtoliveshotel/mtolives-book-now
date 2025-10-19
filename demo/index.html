@@ -1,0 +1,65 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>mtolives-book-now demo</title>
+
+
+  <!-- Flatpickr CSS + JS avalable locally (must come before mtolives-book-now.js) -->
+
+  <link rel="stylesheet" href="/widgets/mtolives-book-now/vendor/flatpickr/flatpickr.min.css?v=1">
+  <script defer src="/widgets/mtolives-book-now/vendor/flatpickr/flatpickr.min.js?v=1"></script>
+
+  <!-- Range selection JS plugin (required for check-in/out pairing) -->
+  <script defer src="/widgets/mtolives-book-now/vendor/flatpickr/plugins/rangePlugin.js"></script>
+
+  <!-- Load your widget -->
+  <script defer src="/widgets/mtolives-book-now/mtolives-book-now.js"></script>
+
+
+
+<style>
+
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    display: flex;                 /* keep centering the demo content */
+    align-items: flex-start;       /* prevents popup from opening off-screen */
+    justify-content: center;
+    padding: 24px;
+    background: #fff;
+  }
+
+  mtolives-book-now { display: block; }
+
+  .booking-wrap{
+    display: inline-flex;
+    flex-direction: column;        /* puts the link under the widget */
+    align-items: flex-start;         /* right-align link under the widget; use flex-start to left-align */
+    gap: 10px;                     /* spacing between widget and link */
+  }
+  .group-link { text-decoration: underline; }
+
+</style>
+
+</head>
+
+<body>
+
+<div class="booking-wrap">
+  <mtolives-book-now
+    book-url="https://www.mtoliveshotel.com/book-now"
+    show-months="2"
+    popup="below"
+    display-format="d M Y">
+  </mtolives-book-now>
+  
+  
+  <a href="/groups/requests/index.html?v=18" style="text-decoration:underline">
+    Groups (8+): request dates & services →
+  </a>
+
+</div>
+
+</body>
+</html>
