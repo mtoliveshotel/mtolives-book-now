@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>mtolives-book-now — Technical Specification (v1.0.0)</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root{
+    --text:#111; --muted:#555; --rule:#e5e7eb; --h:#0f172a;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:40px auto; max-width:880px; line-height:1.6; color:var(--text);
+    font: 16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans","Liberation Sans",sans-serif;
+    padding:0 16px;
+  }
+  h1,h2{line-height:1.25;color:var(--h);margin:1.2em 0 .5em}
+  h1{font-size:28px;border-bottom:1px solid var(--rule);padding-bottom:.4rem}
+  h2{font-size:20px;margin-top:1.4em}
+  code,pre{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace}
+  pre{background:#f8fafc;border:1px solid #e5e7eb;padding:12px;border-radius:8px;overflow:auto}
+  .small{color:var(--muted);font-size:12px}
+  .meta{display:flex;gap:12px;flex-wrap:wrap;color:var(--muted);margin-top:.25rem}
+  ul{margin:.3rem 0 .8rem 1.2rem}
+  hr{border:none;border-top:1px solid var(--rule);margin:2rem 0}
+  .kbd{font:12px/1.2 ui-monospace,Menlo,Consolas,monospace;background:#f3f4f6;border:1px solid #e5e7eb;border-bottom-width:2px;border-radius:6px;padding:2px 6px}
+  @media print {
+    body{margin:0; max-width:none; font-size:13px}
+    a[href]::after{content:" (" attr(href) ")"; font-size:10px; color:#666}
+    .page-break{break-after:page}
+  }
+</style>
+</head>
+<body>
+
+<h1>mtolives-book-now — Technical Specification</h1>
+<div class="meta">
+  <div><strong>Version:</strong> 1.0.0</div>
+  <div><strong>Owner:</strong> Mount of Olives Hotel</div>
+  <div><strong>License:</strong> MIT (widget). Flatpickr assets MIT under their own license.</div>
+</div>
+
+<h2>1) Overview</h2>
+<p>
+The <strong>mtolives-book-now</strong> widget is a lightweight, self-hosted <em>Web Component</em> (Custom Element + Shadow DOM) that renders a two-field date-range picker (Check-in / Check-out) and a <strong>BOOK NOW</strong> button. It navigates to the Cloudbeds booking engine with the selected dates passed as query parameters. It was built to closely match the visual and behavioral feel of the original Site Editor/Cloudbeds header widget, while removing platform lock-in so it can be hosted on your own cPanel or any standard web server.
+</p>
+<h2>Purpose</h2>
+<ul>
+  <li>Decouple booking UI from platform constraints; host independently on your domain.</li>
+  <li>Mimic original look/feel (square fields, two-month popup, subtle turquoise inner frame, hover states).</li>
+  <li>Provide a portable, configurable component with minimal dependencies.</li>
+</ul>
+
+<h2>2) Feature Set (v1.0.0)</h2>
+<ul>
+  <li>Custom Element <code>&lt;mtolives-book-now&gt;</code> with Shadow DOM isolation.</li>
+  <li>Two-field date range via <strong>Flatpickr 4.6.13</strong> + <code>rangePlugin</code> (one popup controls both inputs).</li>
+  <li>Local-first asset loading with CDN fallback for Flatpickr CSS/JS.</li>
+  <li>Global calendar CSS injection so the popup (appended to <code>&lt;body&gt;</code>) is consistently styled.</li>
+  <li>Robust navigation: builds <code>{book-url}?checkin=YYYY-MM-DD&amp;checkout=YYYY-MM-DD</code> (local-time safe) and redirects.</li>
+  <li>Basic i18n: <code>locale</code> attribute loads Flatpickr locale; RTL flip for Arabic/Hebrew (sets <code>dir="rtl"</code> on host).</li>
+  <li>Configurable: <code>book-url</code>, <code>show-months</code> (1 or 2), <code>popup</code> position (above/below/auto), <code>display-format</code>, <code>locale</code>.</li>
+  <li>Encapsulated styles; minimal global CSS (calendar “polish” only).</li>
+</ul>
+
+<h2>3) Technology &amp; Architecture</h2>
+<ul>
+  <li>Language: Vanilla JavaScript (no framework).</li>
+  <li>UI library: Flatpickr 4.6.13 + <code>rangePlugin</code>.</li>
+  <li>Rendering: Shadow DOM for widget; Flatpickr popup appended to <code>document.body</code>.</li>
+  <li>Hosting: Static files on cPanel or any HTTP server; no build step required.</li>
+  <li>Dependencies: Flatpickr core, <code>rangePlugin</code>, optional locale packs (he, ar, tr, ru, ko).</li>
+</ul>
+
+<h2>4) Directory Layout (recommended)</h2>
+<pre><code>widgets/
+└─ mtolives-book-now/
+   ├─ mtolives-book-now.js
+   ├─ vendor/
+   │  └─ flatpickr/
+   │     ├─ flatpickr.min.css
+   │     ├─ flatpickr.min.js
+   │     ├─ plugins/
+   │     │  └─ rangePlugin.js
+   │     └─ l10n/ (optional locales: he.js, ar.js, tr.js, ru.js, ko.js …)
+   ├─ demo/
+   │  └─ index.html
+   ├─ VERSION
+   ├─ CHANGELOG.md
+   ├─ LICENSE
+   └─ README.md
+</code></pre>
+
+<h2>5) Usage</h2>
+<h3>Include on a page</h3>
+<pre><code>&lt;script defer src="/widgets/mtolives-book-now/mtolives-book-now.js?v=1.0.0"&gt;&lt;/script&gt;
+
+&lt;mtolives-book-now
+  book-url="https://www.mtoliveshotel.com/book-now"
+  show-months="2"
+  popup="above"
+  display-format="d M Y"
+  locale="en"&gt;
+&lt;/mtolives-book-now&gt;
+</code></pre>
+
+<h3>Public Attributes (Component API)</h3>
+<ul>
+  <li><code>book-url</code> (string): Absolute or relative URL to booking engine entry page.</li>
+  <li><code>show-months</code> (1|2): Months shown in the popup (default 2).</li>
+  <li><code>popup</code> (<code>above</code>|<code>below</code>|<code>auto</code>|variants): Preferred popup position (default <code>above</code>).</li>
+  <li><code>display-format</code> (string): Visible date format (e.g., <code>d M Y</code>).</li>
+  <li><code>locale</code> (string): Flatpickr locale key (e.g., <code>en</code>, <code>he</code>, <code>ar</code>, <code>tr</code>, <code>ru</code>, <code>ko</code>).</li>
+</ul>
+
+<h3>URL Contract (Navigation)</h3>
+<p>On BOOK NOW, the widget navigates to:</p>
+<pre><code>{book-url}?checkin=YYYY-MM-DD&amp;checkout=YYYY-MM-DD</code></pre>
+<ul>
+  <li>If only check-in is selected, checkout defaults to +1 day.</li>
+  <li>Dates are read from Flatpickr’s <code>selectedDates</code> in local time.</li>
+</ul>
+
+<h2>6) Styling &amp; Theming</h2>
+<p>CSS variables on <code>:host</code> allow easy theming:</p>
+<ul>
+  <li><code>--olive</code>, <code>--hover-blue</code>, <code>--teal</code> — button/hover colors and inner field frame.</li>
+  <li><code>--fieldW</code>, <code>--fieldH</code> — field width/height.</li>
+  <li><code>--radius</code> — <code>0</code> for square; e.g., <code>6px</code> for rounded.</li>
+  <li><code>--gap</code> — spacing between fields/button.</li>
+</ul>
+<p>All other styles are isolated in Shadow DOM. The only global CSS is a small calendar “polish” style injected to <code>&lt;head&gt;</code> to style the popup appended to <code>&lt;body&gt;</code>.</p>
+
+<h2>7) Accessibility (A11y)</h2>
+<ul>
+  <li>Labeled inputs (<code>&lt;label for="…"&gt;</code>) and <code>aria-label</code>s present.</li>
+  <li>Keyboard navigation provided by Flatpickr.</li>
+  <li><strong>Planned</strong>: aria-live feedback and disabling BOOK NOW until a valid range is selected.</li>
+</ul>
+
+<h2>8) Internationalization (i18n) &amp; RTL</h2>
+<ul>
+  <li>Set <code>locale="…"</code> to load Flatpickr localization (local vendor path or CDN fallback).</li>
+  <li>For Arabic/Hebrew, the component sets <code>dir="rtl"</code> on the host to flip layout direction.</li>
+  <li><strong>Planned</strong>: localizable UI strings (labels/button text) via a small dictionary.</li>
+</ul>
+
+<h2>9) Security Considerations</h2>
+<ul>
+  <li>v1.0.0 uses no API keys; navigation is client-side only.</li>
+  <li>If adding price overlays later, fetch from your server (not the browser) to avoid exposing Cloudbeds credentials; configure CORS properly.</li>
+  <li>Serve JS over HTTPS with correct MIME (<code>text/javascript</code>).</li>
+</ul>
+
+<h2>10) Performance</h2>
+<ul>
+  <li>One component JS + small Flatpickr assets.</li>
+  <li>Local-first loading + CDN fallback improves resiliency.</li>
+  <li>Use long cache headers for vendor assets; bump <code>?v={VERSION}</code> on deployments to bust caches.</li>
+</ul>
+
+<h2>11) Versioning &amp; Release</h2>
+<ul>
+  <li>Semantic Versioning (<code>MAJOR.MINOR.PATCH</code>).</li>
+  <li>Keep <code>VERSION</code>, <code>CHANGELOG.md</code>, and <code>LICENSE</code> in the folder.</li>
+  <li>Update your HTML include with <code>?v=1.0.0</code> when you deploy a new release. Optionally tag releases in Git (e.g., <code>v1.0.0</code>).</li>
+</ul>
+
+<h2>12) Limitations &amp; Known Issues (v1.0.0)</h2>
+<ul>
+  <li><strong>Price overlays</strong> not included (requires a server endpoint + Cloudbeds API/partner access).</li>
+  <li>Popup calendar appended to <code>&lt;body&gt;</code>; needs global CSS injection (the widget does this automatically).</li>
+  <li>Pages with <code>body { display:flex; }</code> can make missing CSS more obvious—ensure <code>flatpickr.min.css</code> loads (local or CDN).</li>
+  <li>Legacy browsers without modern JS are not supported (IE). Old Edge/old Chromium are supported (we removed optional chaining).</li>
+</ul>
+
+<h2>13) Troubleshooting</h2>
+<ul>
+  <li><strong>Giant ‹ › or raw “SunMonTue” text</strong> → Flatpickr CSS didn’t load. Confirm vendor CSS exists or CDN is reachable.</li>
+  <li><strong>Button does nothing</strong> → Ensure the script is served as JavaScript (correct MIME) and check console errors.</li>
+  <li><strong>Calendar opens off-screen</strong> → For testing, center the element inside a container rather than making the entire body a flex/grid layout.</li>
+  <li><strong>Unexpected HTML characters</strong> → Verify the <code>.js</code> file doesn’t contain <code>&lt;script&gt;</code> tags and that the path isn’t 404’ing to an HTML error page.</li>
+</ul>
+
+<h2>14) Roadmap (Proposed)</h2>
+<ul>
+  <li>Localizable UI strings + fuller RTL micro-layout parity.</li>
+  <li>Disable BOOK NOW until valid range; min/max nights with aria-live feedback.</li>
+  <li>Price badges per day via <code>onDayCreate</code> with month caching (requires server endpoint).</li>
+  <li>Analytics hooks (custom events) + optional UTM parameters.</li>
+  <li>Inline calendar variant and responsive single-month mode on narrow screens.</li>
+  <li>CSP hardening (move tiny global polish to a static CSS if inline styles are restricted).</li>
+</ul>
+
+<h2>15) Core Example (Simplified)</h2>
+<pre><code>await ensureFlatpickrLoaded(locale);
+
+this.fpRange = flatpickr(checkin, {
+  locale,
+  dateFormat: displayFormat,
+  showMonths,
+  position,
+  plugins: [ new rangePlugin({ input: checkout }) ],
+  onChange: (dates) => {
+    const [ci, co] = dates;
+    checkin.value  = ci ? flatpickr.formatDate(ci, displayFormat) : '';
+    checkout.value = co ? flatpickr.formatDate(co, displayFormat) : '';
+  },
+});
+
+// on click:
+const url = new URL(bookUrl, location.origin);
+url.searchParams.set('checkin',  toYMD(checkIn));
+url.searchParams.set('checkout', toYMD(checkOut));
+location.href = url.toString();
+</code></pre>
+
+<h2>16) Licensing</h2>
+<ul>
+  <li>Widget: MIT © 2025 Mount of Olives Hotel.</li>
+  <li>Flatpickr: MIT (keep its <code>LICENSE</code> if you self-host vendor files).</li>
+</ul>
+
+<h2>17) Change History (Excerpt)</h2>
+<ul>
+  <li><strong>1.0.0 (2025-10-08)</strong> — Production baseline. Local-first Flatpickr with CDN fallback; robust URL handoff; small global calendar polish; RTL toggle.</li>
+  <li><strong>0.4.x (2025-10-07)</strong> — Global CSS injection; removed optional chaining; fixed navigation via <code>selectedDates</code>.</li>
+  <li><strong>0.3.0 (2025-10-06)</strong> — Web Component + Shadow DOM encapsulation.</li>
+  <li><strong>0.2.0 (2025-10-06)</strong> — Flatpickr <code>rangePlugin</code>; correct in-calendar range highlighting.</li>
+  <li><strong>0.1.0 (2025-10-05)</strong> — Initial two-input prototype.</li>
+</ul>
+
+<hr>
+<div class="small">Generated for internal use — mtolives-book-now v1.0.0</div>
+
+</body>
+</html>
