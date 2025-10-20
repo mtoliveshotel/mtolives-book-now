@@ -3,7 +3,7 @@
   const WIDGET_VERSION = '1.0.0';
   console.info(`mtolives-book-now ${WIDGET_VERSION} loaded`);
 
-  // ---------- helpers ----------
+  // ---------- small helpers ----------
   const once = (k, fn) => (once[k] ? undefined : (once[k] = fn()));
   const toAbs = (u) => new URL(u, location.href).href;
 
@@ -12,7 +12,7 @@
       const abs = toAbs(src);
       if ([...document.scripts].some(s => toAbs(s.src) === abs)) return res();
       const s = document.createElement('script');
-      s.src = abs;
+      s.src = abs; s.defer = true;
       s.onload = res;
       s.onerror = () => rej(new Error(`Failed to load script: ${abs}`));
       document.head.appendChild(s);
@@ -39,22 +39,26 @@
     catch { await loadCss(cdnUrl); }
   };
 
-  // ---------- third-party assets (local first, CDN fallback) ----------
-  //   const FP_LOCAL_BASE = '/widgets/mtolives-book-now/vendor/flatpickr';
-  const FP_LOCAL_BASE = './vendor/flatpickr';
+  // ---------- resolve where THIS file lives (works on cPanel & GitHub Pages) ----------
+  const THIS_FILENAME = 'mtolives-book-now.js';
+  function getScriptBase() {
+    // Prefer the tag that loaded this script
+    if (document.currentScript && document.currentScript.src) {
+      return new URL('.', document.currentScript.src).href.replace(/\/$/, '');
+    }
+    // Fallback: find by filename
+    for (const s of document.querySelectorAll('script[src]')) {
+      if (s.src.includes(THIS_FILENAME)) {
+        return new URL('.', s.src).href.replace(/\/$/, '');
+      }
+    }
+    // Last resort: assume current document
+    return location.origin + location.pathname.replace(/\/[^/]*$/, '');
+  }
+  const SCRIPT_BASE   = getScriptBase();                         // e.g. https://.../mtolives-book-now  or  https://.../widgets/mtolives-book-now
+  const FP_LOCAL_BASE = `${SCRIPT_BASE}/vendor/flatpickr`;       // local vendor next to the JS
   const FP_CDN_BASE   = 'https://cdn.jsdelivr.net/npm/flatpickr@4.6.13';
 
-
-  // put near the top where you define Flatpickr paths
-const FP_BASE = 'https://cdn.jsdelivr.net/npm/flatpickr';
-
-once('flatpickr-css', () => loadCss(`${FP_BASE}/dist/flatpickr.min.css`));
-await loadScript(`${FP_BASE}/dist/flatpickr.min.js`);
-await loadScript(`${FP_BASE}/dist/plugins/rangePlugin.js`);
-
-  
-  
-  
   // Load calendar CSS globally (popup renders in <body>, not shadow)
   once('flatpickr-css', () =>
     loadCssWithFallback(
@@ -63,7 +67,7 @@ await loadScript(`${FP_BASE}/dist/plugins/rangePlugin.js`);
     )
   );
 
-  // Tiny visual polish + arrow sizing + z-index
+  // tiny visual polish for the popup + safer z-index
   once('mtolives-global-calendar-css', () => {
     const style = document.createElement('style');
     style.textContent = `
@@ -72,9 +76,7 @@ await loadScript(`${FP_BASE}/dist/plugins/rangePlugin.js`);
         box-shadow: 0 10px 30px rgba(0,0,0,.18)!important;
         z-index: 999999;
       }
-      .flatpickr-day.selected,
-      .flatpickr-day.startRange,
-      .flatpickr-day.endRange { background:#4a90e2; border-color:#4a90e2; color:#fff }
+      .flatpickr-day.selected, .flatpickr-day.startRange, .flatpickr-day.endRange { background:#4a90e2; border-color:#4a90e2; color:#fff }
       .flatpickr-day.inRange { background: rgba(74,144,226,.16) }
       .flatpickr-prev-month svg, .flatpickr-next-month svg { width:14px; height:14px; display:inline-block }
     `;
@@ -82,7 +84,7 @@ await loadScript(`${FP_BASE}/dist/plugins/rangePlugin.js`);
   });
 
   async function ensureFlatpickrLoaded(locale) {
-    // core + plugin
+    // core + range plugin (local first, CDN fallback)
     await loadScriptWithFallback(
       `${FP_LOCAL_BASE}/flatpickr.min.js`,
       `${FP_CDN_BASE}/dist/flatpickr.min.js`
@@ -94,12 +96,8 @@ await loadScript(`${FP_BASE}/dist/plugins/rangePlugin.js`);
     // optional locale
     if (locale && locale.toLowerCase() !== 'en') {
       const l = locale.toLowerCase();
-      // try local first, then CDN; ignore if missing
-      try {
-        await loadScript(`${FP_LOCAL_BASE}/l10n/${l}.js`);
-      } catch {
-        try { await loadScript(`${FP_CDN_BASE}/dist/l10n/${l}.js`); } catch {}
-      }
+      try { await loadScript(`${FP_LOCAL_BASE}/l10n/${l}.js`); }
+      catch { try { await loadScript(`${FP_CDN_BASE}/dist/l10n/${l}.js`); } catch {} }
     }
   }
 
@@ -169,7 +167,7 @@ await loadScript(`${FP_BASE}/dist/plugins/rangePlugin.js`);
 
       if (this.fpRange && this.fpRange.destroy) this.fpRange.destroy();
 
-      // Apply UI labels for RTL locales (simple toggle)
+      // RTL tweak
       if (locale === 'ar' || locale === 'he') this.shadowRoot.host.setAttribute('dir','rtl');
       else this.shadowRoot.host.removeAttribute('dir');
 
