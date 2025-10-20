@@ -3,9 +3,17 @@
 <head>
   <meta charset="utf-8" />
   <title>mtolives-book-now — v0.4 demo</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  
   <link rel="icon" href="./mtolives.ico">
 
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <!-- Flatpickr CSS + JS avalable locally (must come before mtolives-book-now.js) -->
+  <link rel="stylesheet" href="./vendor/flatpickr/flatpickr.min.css?v=1">
+  <script defer src="./vendor/flatpickr/flatpickr.min.js?v=1"></script>
+
+  <!-- Range selection JS plugin (required for check-in/out pairing) -->
+  <script defer src="./vendor/flatpickr/plugins/rangePlugin.js"></script>
+  
   <!-- Load the widget (v0.4). The widget will try local vendor files first, then CDN fallback. -->
   <script defer src="./mtolives-book-now.js?v=0.4.0"></script>
 
