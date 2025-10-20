@@ -1,71 +1,52 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>mtolives-book-now demo</title>
+  <title>mtolives-book-now — v0.4 demo</title>
   <link rel="icon" href="./mtolives.ico">
 
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <!-- Load the widget (v0.4). The widget will try local vendor files first, then CDN fallback. -->
+  <script defer src="./mtolives-book-now.js?v=0.4.0"></script>
 
-
-  <!-- Flatpickr CSS + JS avalable locally (must come before mtolives-book-now.js) -->
-
-  <!--   <link rel="stylesheet" href="/widgets/mtolives-book-now/vendor/flatpickr/flatpickr.min.css?v=1"> -->
-  <!--   <script defer src="/widgets/mtolives-book-now/vendor/flatpickr/flatpickr.min.js?v=1"></script> -->
-  <link rel="stylesheet" href="./vendor/flatpickr/flatpickr.min.css?v=1">
-  <script defer src="./vendor/flatpickr/flatpickr.min.js?v=1"></script>
-
-  <!-- Range selection JS plugin (required for check-in/out pairing) -->
-  <!--   <script defer src="/widgets/mtolives-book-now/vendor/flatpickr/plugins/rangePlugin.js"></script> -->
-  <script defer src="./vendor/flatpickr/plugins/rangePlugin.js"></script>
-  
-  <!-- Load your widget -->
-  <!--   <script defer src="/widgets/mtolives-book-now/mtolives-book-now.js"></script> -->
-  <script defer src="./mtolives-book-now.js"></script>
-
-
-
-<style>
-
-  html, body { height: 100%; }
-  body {
-    margin: 0;
-    display: flex;                 /* keep centering the demo content */
-    align-items: flex-start;       /* prevents popup from opening off-screen */
-    justify-content: center;
-    padding: 24px;
-    background: #fff;
-  }
-
-  mtolives-book-now { display: block; }
-
-  .booking-wrap{
-    display: inline-flex;
-    flex-direction: column;        /* puts the link under the widget */
-    align-items: flex-start;         /* right-align link under the widget; use flex-start to left-align */
-    gap: 10px;                     /* spacing between widget and link */
-  }
-  .group-link { text-decoration: underline; }
-
-</style>
-
+  <!-- Simple page centering so the calendar opens on-screen -->
+  <style>
+    html,body{height:100%}
+    body{margin:0;display:flex;align-items:flex-start;justify-content:center;padding:32px;background:#fff}
+    .card{padding:20px 24px;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 10px 24px rgba(0,0,0,.06)}
+    h1{margin:0 0 12px;font:600 18px/1.3 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+    p{margin:0 0 16px;color:#444;font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+  </style>
 </head>
-
 <body>
+  <div class="card">
+    <h1>mtolives-book-now — v0.4 demo</h1>
+    <p>Select a date range and click BOOK NOW to test the URL handoff.</p>
 
-<div class="booking-wrap">
-  <mtolives-book-now
-    book-url="https://www.mtoliveshotel.com/book-now"
-    show-months="2"
-    popup="below"
-    display-format="d M Y">
-  </mtolives-book-now>
-  
-  
-  <a href="/groups/requests/index.html?v=18" style="text-decoration:underline">
-    Groups (8+): → → request dates & services →
-  </a>
+    <!-- Widget -->
+    <mtolives-book-now
+      book-url="https://www.mtoliveshotel.com/book-now"
+      show-months="2"
+      popup="below"
+      display-format="d M Y"
+      locale="en"
+      min-nights="1"
+      max-nights="0"
+      align="center"
+      teal
+      style="
+        --fieldW: 260px;
+        --rounded: 6px;
+        --density: 12px;
+        --accent: #808000;
+        --hover: #4a90e2;
+        --shadow: 0 10px 28px rgba(0,0,0,.18);
+      ">
+    </mtolives-book-now>
 
-</div>
-
+    <p style="margin-top:14px">
+      Groups (8+ rooms)? <a href="https://test.mtolives.com/group-request/index.html" target="_blank" rel="noopener">Request a quote</a>
+    </p>
+  </div>
 </body>
 </html>
