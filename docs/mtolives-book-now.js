@@ -3,109 +3,63 @@
   const WIDGET_VERSION = '0.4.0';
   console.info(`mtolives-book-now ${WIDGET_VERSION} loaded`);
 
-  // ----------------- tiny utilities -----------------
-  const once = (k, fn) => (once[k] ? once[k] : (once[k] = fn()));
-  const loadScript = (src) =>
-    new Promise((res, rej) => {
-      const s = document.createElement('script');
-      s.src = src;
-      s.async = true;
-      s.onload = res;
-      s.onerror = () => rej(new Error(`Failed to load ${src}`));
-      document.head.appendChild(s);
-    });
-
+  // ---------- tiny loader helpers ----------
+  const once = (k, fn) => (once[k] ? undefined : (once[k] = fn()));
   const loadCss = (href) =>
     new Promise((res, rej) => {
       const l = document.createElement('link');
       l.rel = 'stylesheet';
       l.href = href;
       l.onload = res;
-      l.onerror = () => rej(new Error(`Failed to load ${href}`));
+      l.onerror = rej;
       document.head.appendChild(l);
     });
+  const loadJs = (src) =>
+    new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = src;
+      s.defer = true;
+      s.onload = res;
+      s.onerror = rej;
+      document.head.appendChild(s);
+    });
 
-  const loadWithFallback = async (primary, fallback, loader) => {
-    try { await loader(primary); }
-    catch { await loader(fallback); }
-  };
+  // Compute base directory of THIS script robustly (handles ?v=...).
+  const thisScript =
+    document.currentScript ||
+    [...document.scripts].find((s) => /mtolives-book-now\.js/.test(s.src));
+  const SCRIPT_BASE = thisScript ? new URL('.', thisScript.src).href : './';
 
-  const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
-  const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
-  const diffNights = (a, b) => Math.round((b - a) / 86400000);
-  const fmtISO = (d) => d.toISOString().slice(0,10); // YYYY-MM-DD
+  // Local vendor dir (next to this script) + CDN fallbacks
+  const FP_LOCAL_BASE = new URL('./vendor/flatpickr/', SCRIPT_BASE).href; // ends with /
+  const FP_CDN_ROOT   = 'https://cdn.jsdelivr.net/npm/flatpickr@4.6.13';  // no trailing /
+  const FP_CDN_DIST   = `${FP_CDN_ROOT}/dist`;
 
-  // ----------------- resolve base paths -----------------
-  function getSelfBase() {
-    // Find the <script> tag that loaded this file and derive its directory.
-    const rx = /\/mtolives-book-now(\.min)?\.js/i;
-    const tag = Array.from(document.scripts).find(s => rx.test(s.src));
-    if (tag) return tag.src.replace(rx, '');
+  // Ensure Flatpickr is available; prefer local, fall back to CDN.
+  async function ensureFlatpickr() {
+    // If the page already loaded Flatpickr (your Option A tags), do nothing.
+    if (window.flatpickr) return;
 
-    // Sensible defaults if we can't detect the loader tag:
-    if (location.pathname.startsWith('/mtolives-book-now/')) return '/mtolives-book-now'; // GitHub Pages repo root
-    if (location.pathname.startsWith('/widgets/mtolives-book-now/')) return '/widgets/mtolives-book-now'; // cPanel
-    return '.'; // current directory
+    try {
+      once('fp-css', () => loadCss(`${FP_LOCAL_BASE}flatpickr.min.css`));
+      await loadJs(`${FP_LOCAL_BASE}flatpickr.min.js`);
+      await loadJs(`${FP_LOCAL_BASE}plugins/rangePlugin.js`);
+    } catch {
+      // Fallback to CDN
+      once('fp-css-cdn', () => loadCss(`${FP_CDN_DIST}/flatpickr.min.css`));
+      await loadJs(`${FP_CDN_DIST}/flatpickr.min.js`);
+      await loadJs(`${FP_CDN_ROOT}/dist/plugins/rangePlugin.js`);
+    }
+
+    if (!window.flatpickr) {
+      console.error('flatpickr not available after load');
+    }
   }
 
-  const SELF_BASE     = getSelfBase();                        // e.g. /mtolives-book-now
-  const FP_LOCAL_DIR  = `${SELF_BASE}/vendor/flatpickr`;      // vendored copy (if present)
-  const FP_CDN_DIST   = 'https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist';
-  const FP_CDN_ROOT   = 'https://cdn.jsdelivr.net/npm/flatpickr@4.6.13';
-
-  // Ensure Flatpickr (CSS + core + rangePlugin) exactly once, with local→CDN fallbacks
-  let ENSURE_FP;
-  function ensureFlatpickr() {
-    if (ENSURE_FP) return ENSURE_FP;
-    ENSURE_FP = (async () => {
-      // CSS (global; popup renders in <body>)
-      await loadWithFallback(
-        `${FP_LOCAL_DIR}/flatpickr.min.css`,
-        `${FP_CDN_DIST}/flatpickr.min.css`,
-        loadCss
-      );
-      // Core JS
-      await loadWithFallback(
-        `${FP_LOCAL_DIR}/flatpickr.min.js`,
-        `${FP_CDN_ROOT}/flatpickr.min.js`,
-        loadScript
-      );
-      // rangePlugin JS
-      await loadWithFallback(
-        `${FP_LOCAL_DIR}/plugins/rangePlugin.js`,
-        `${FP_CDN_DIST}/plugins/rangePlugin.js`,
-        loadScript
-      );
-      if (!window.flatpickr) throw new Error('flatpickr not available after load');
-      return window.flatpickr;
-    })();
-    return ENSURE_FP;
-  }
-
-  // A little global polish for the popup calendar
-  once('global-calendar-css', () => {
-    const css = `
-      .flatpickr-calendar{border:1px solid rgba(0,0,0,.08)!important;box-shadow:0 12px 32px rgba(0,0,0,.22)!important}
-      .flatpickr-day.selected,
-      .flatpickr-day.startRange,
-      .flatpickr-day.endRange{background:var(--fp-accent,#4a90e2);border-color:var(--fp-accent,#4a90e2);color:#fff}
-      .flatpickr-day.inRange{background:rgba(74,144,226,.15)}
-    `;
-    const s = document.createElement('style');
-    s.textContent = css;
-    document.head.appendChild(s);
-  });
-
-  // ----------------- Web Component -----------------
+  // ---------- widget ----------
   class MtOlivesBookNow extends HTMLElement {
     static get observedAttributes() {
-      return [
-        // behavior / data
-        'book-url','target','show-months','popup','display-format','locale',
-        'min-nights','max-nights','allow-same-day',
-        // design tokens
-        'accent','hover','teal','field-width','rounded','density','shadow','align'
-      ];
+      return ['book-url', 'show-months', 'popup', 'display-format', 'min-nights', 'locale'];
     }
 
     constructor() {
@@ -114,198 +68,164 @@
       this.shadowRoot.innerHTML = `
         <style>
           :host{
-            --accent: #808000;          /* olive */
-            --hover:  #4a90e2;          /* blue */
-            --teal:   #2bb6c1;          /* inner frame hint */
+            --olive:#808000;
             --fieldW: 260px;
-            --rounded: 6px;
-            --density: 12px;            /* vertical padding inside fields */
-            --shadow: 0 10px 28px rgba(0,0,0,.18);
-            --align: left;               /* left|center */
+            --radius: 6px;
+            --label: #6b7280;
+            --border:#d1d5db;
+            --inner: #26b6c1; /* subtle turquoise inner line */
+            --focus:#4a90e2;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
           }
-          *,*::before,*::after{ box-sizing:border-box }
-          .wrap{ display:flex; justify-content: var(--align) ; }
-          .bar{ display:flex; gap:12px; align-items:center; flex-wrap:nowrap; }
-          .group{ display:flex; flex-direction:column; gap:6px; }
-          label{ font: 500 12px/1.2 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:#444 }
-          .field{
-            width:var(--fieldW);
-            padding:var(--density) 14px;
-            border:1px solid rgba(0,0,0,.18);
-            border-radius:var(--rounded);
-            outline:none;
-            font: 500 14px/1.3 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-            background:#fff;
-            box-shadow: inset 0 0 0 1px transparent;
-            transition: box-shadow .15s ease, border-color .15s ease;
+          .wrap{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
+          .group{display:flex; flex-direction:column; gap:6px}
+          label{font-size:12px; color:var(--label)}
+          input{
+            width:var(--fieldW); height:40px; padding:8px 10px;
+            border:1px solid var(--border); border-radius: var(--radius);
+            outline: 2px solid transparent; outline-offset: -4px;
+            background:#fff; font-size:14px;
           }
-          .field:focus{
-            border-color: rgba(0,0,0,.35);
-            box-shadow: inset 0 0 0 1px rgba(0,0,0,.15);
+          input:focus{ border-color: var(--focus); outline-color: var(--inner); }
+          button{
+            height:40px; padding:0 20px; border-radius:20px; border:none;
+            background:var(--olive); color:#111; font-weight:600; cursor:pointer;
           }
-          :host([teal]) .field{ box-shadow: inset 0 0 0 1px var(--teal); }
-
-          .btn{
-            border:none; cursor:pointer; user-select:none;
-            padding: calc(var(--density) + 2px) 20px;
-            border-radius: 999px;
-            background: var(--accent);
-            color: #111;
-            font: 700 14px/1 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-            box-shadow: var(--shadow);
-            transition: transform .04s ease, background .15s ease, color .15s ease;
-            white-space:nowrap;
-          }
-          .btn:hover{ background: var(--hover); color:#fff; }
-          .btn:active{ transform: translateY(1px); }
-
-          /* alignment helper */
-          :host([align="center"]) .wrap{ justify-content:center; }
-          :host([align="left"]) .wrap{ justify-content:flex-start; }
-          :host([align="right"]) .wrap{ justify-content:flex-end; }
-
-          /* allow tokens via attributes */
-          :host([accent]){ --accent: attr(accent color, color); }
-          :host([hover]) { --hover:  attr(hover color, color); }
-          :host([field-width]){ --fieldW: attr(field-width px); }
-          :host([rounded]){ --rounded: attr(rounded px); }
-          :host([density]){ --density: attr(density px); }
-          :host([shadow]){ --shadow: attr(shadow); }
+          button:disabled{opacity:.6; cursor:not-allowed}
+          /* Flatpickr popup visual polish (global, lives outside shadow) */
         </style>
-
         <div class="wrap">
-          <div class="bar">
-            <div class="group">
-              <label id="ci-lab">Check-in</label>
-              <input class="field" id="ci" aria-labelledby="ci-lab" autocomplete="off" />
-            </div>
-            <div class="group">
-              <label id="co-lab">Check-out</label>
-              <input class="field" id="co" aria-labelledby="co-lab" autocomplete="off" />
-            </div>
-            <button class="btn" id="go">BOOK NOW</button>
+          <div class="group">
+            <label>Check-in</label>
+            <input id="in" type="text" inputmode="none" placeholder="Check-in">
           </div>
+          <div class="group">
+            <label>Check-out</label>
+            <input id="out" type="text" inputmode="none" placeholder="Check-out">
+          </div>
+          <button id="go" type="button">BOOK NOW</button>
         </div>
       `;
-    }
 
-    // -------- lifecycle --------
-    connectedCallback() {
+      this.$in  = this.shadowRoot.getElementById('in');
+      this.$out = this.shadowRoot.getElementById('out');
+      this.$go  = this.shadowRoot.getElementById('go');
+
       // defaults
-      this.bookUrl       = this.getAttribute('book-url') || 'https://www.mtoliveshotel.com/book-now';
-      this.target        = this.getAttribute('target') || 'same';        // same|new
-      this.showMonths    = clamp(parseInt(this.getAttribute('show-months')||'2',10) || 2, 1, 3);
-      this.popup         = (this.getAttribute('popup') || 'below');      // below|above|auto
-      this.displayFormat = this.getAttribute('display-format') || 'd M Y';
-      this.locale        = this.getAttribute('locale') || 'en';
-      this.minNights     = parseInt(this.getAttribute('min-nights')||'1',10) || 1;
-      this.maxNights     = parseInt(this.getAttribute('max-nights')||'0',10) || 0; // 0 = unlimited
-      this.allowSameDay  = this.hasAttribute('allow-same-day');
+      this.cfg = {
+        bookUrl:   'https://www.mtoliveshotel.com/book-now',
+        showMonths: 2,
+        popup:     'auto',          // 'auto' | 'above' | 'below'
+        displayFmt:'d M Y',
+        minNights: 1,
+        locale:    null
+      };
+    }
 
-      // expose accent to calendar via CSS var
-      document.documentElement.style.setProperty('--fp-accent', getComputedStyle(this).getPropertyValue('--hover') || '#4a90e2');
+    attributeChangedCallback(name, _old, val) {
+      if (name === 'book-url') this.cfg.bookUrl = val || this.cfg.bookUrl;
+      if (name === 'show-months') this.cfg.showMonths = +val || this.cfg.showMonths;
+      if (name === 'popup') this.cfg.popup = val || this.cfg.popup;
+      if (name === 'display-format') this.cfg.displayFmt = val || this.cfg.displayFmt;
+      if (name === 'min-nights') this.cfg.minNights = Math.max(1, +val || 1);
+      if (name === 'locale') this.cfg.locale = val || null;
+    }
 
-      // wires
-      this.$ci = this.shadowRoot.getElementById('ci');
-      this.$co = this.shadowRoot.getElementById('co');
-      this.$go = this.shadowRoot.getElementById('go');
+    async connectedCallback() {
+      // Put a little global popup styling (outside shadow)
+      once('fp-global-css', () => {
+        const s = document.createElement('style');
+        s.textContent = `
+          .flatpickr-calendar{border:1px solid rgba(0,0,0,.08)!important; box-shadow:0 10px 30px rgba(0,0,0,.22)!important}
+          .flatpickr-day.selected,.flatpickr-day.startRange,.flatpickr-day.endRange{background:#4a90e2;border-color:#4a90e2;color:#fff}
+          .flatpickr-day.inRange{background:rgba(74,144,226,.16)}
+        `;
+        document.head.appendChild(s);
+      });
+
+      await ensureFlatpickr(); // will no-op if already loaded by the page
+      this.initCalendar();
       this.$go.addEventListener('click', () => this.handleGo());
-
-      // init calendar
-      ensureFlatpickr().then(() => this.initPicker()).catch(console.error);
     }
 
-    attributeChangedCallback(name, _o, _n) {
-      // If attributes change after mount, re-init simple ones
-      if (!this.$ci) return;
-      if (['show-months','popup','display-format','min-nights','max-nights','allow-same-day','locale'].includes(name)) {
-        try { this.fp && this.fp.destroy(); } catch {}
-        ensureFlatpickr().then(() => this.initPicker()).catch(console.error);
-      }
-    }
+    initCalendar() {
+      const pos = this.cfg.popup === 'above' ? 'above'
+                : this.cfg.popup === 'below' ? 'below'
+                : 'auto';
 
-    // -------- calendar init + validation --------
-    initPicker() {
-      const fpOpts = {
-        dateFormat: this.displayFormat,       // what shows in the inputs
-        allowInput: false,
-        clickOpens: true,
-        position: this.popup,                 // "above" | "below" | "auto"
-        showMonths: this.showMonths,
-        // Locale: pass-through; if unsupported, Flatpickr will default to English
-        locale: this.locale,
-        // Link the second input with rangePlugin
-        plugins: [ new rangePlugin({ input: this.$co }) ],
-        onChange: (sel) => this.onChange(sel),
+      // Use rangePlugin to pair two inputs (check-in -> check-out)
+      const options = {
+        altInput: true,
+        altFormat: this.cfg.displayFmt,
+        dateFormat: 'Y-m-d',
+        minDate: 'today',
+        position: pos,
+        showMonths: this.cfg.showMonths,
+        plugins: [ new window.rangePlugin({ input: this.$out }) ],
+        locale: this.cfg.locale || undefined,
+        onChange: (dates) => this.enforceMinNights(dates),
+        onReady:  (selDates, dateStr, inst) => {
+          // keep check-out constrained to >= check-in
+          this.$out.addEventListener('change', () => {
+            const inDate = this.$in._flatpickr && this.$in._flatpickr.selectedDates[0];
+            const outDate = this.$out._flatpickr && this.$out._flatpickr.selectedDates[0];
+            if (inDate && outDate && outDate < inDate) {
+              this.$out._flatpickr.setDate(inDate, true);
+            }
+          });
+        }
       };
 
-      // Flatpickr attaches to the FIRST input; second is wired by rangePlugin
-      this.fp = window.flatpickr(this.$ci, fpOpts);
-      // If same-day not allowed, bump co minDate dynamically when ci changes
-      this.$ci.addEventListener('change', () => {
-        if (!this.fp || !this.fp.selectedDates?.length) return;
-        const ci = this.fp.selectedDates[0];
-        const minCo = this.allowSameDay ? ci : addDays(ci, 1);
-        this.fp.set('minDate', null); // avoid conflict on core picker
-        // rangePlugin handles min constraint implicitly; we enforce in onChange
+      // attach FP instances
+      window.flatpickr(this.$in, options);
+      window.flatpickr(this.$out, {
+        altInput: true,
+        altFormat: this.cfg.displayFmt,
+        dateFormat: 'Y-m-d',
+        minDate: 'today',
+        position: pos,
+        locale: this.cfg.locale || undefined
       });
     }
 
-    onChange(sel) {
-      if (!sel || sel.length === 0) return;
-      const ci = sel[0];
-      let co  = sel[1] || null;
+    enforceMinNights(dates) {
+      if (!dates || dates.length === 0) return;
+      const [inDate] = dates;
+      if (!inDate) return;
 
-      // if only ci selected, ensure co respects same-day policy when it arrives
-      if (!co) return;
+      // Ensure checkout reflects min nights as a soft guide (does not block user)
+      const minMs  = (this.cfg.minNights || 1) * 86400000;
+      const target = new Date(inDate.getTime() + minMs);
 
-      // enforce same-day if disallowed
-      if (!this.allowSameDay && diffNights(ci, co) === 0) {
-        co = addDays(ci, 1);
+      const outFP = this.$out._flatpickr;
+      const currentOut = outFP && outFP.selectedDates[0];
+      if (outFP && (!currentOut || currentOut < target)) {
+        outFP.setDate(target, false); // do not trigger change loop
       }
 
-      // enforce min/max nights
-      const minN = Math.max(0, this.minNights);
-      const maxN = Math.max(0, this.maxNights); // 0 => unlimited
-
-      let nights = diffNights(ci, co);
-      if (minN > 0 && nights < minN) {
-        co = addDays(ci, minN);
-        nights = minN;
-      }
-      if (maxN > 0 && nights > maxN) {
-        co = addDays(ci, maxN);
-        nights = maxN;
-      }
-
-      // write back if we modified end date
-      if (sel[1] !== co) {
-        // setDate accepts array [start,end] and will update both inputs
-        this.fp.setDate([ci, co], true);
-      }
+      // Also constrain check-out minDate dynamically
+      if (outFP) outFP.set('minDate', inDate);
     }
 
-    // -------- submit --------
     handleGo() {
-      if (!this.fp || this.fp.selectedDates.length < 2) {
-        // open calendar if not complete
-        try { this.fp.open(); } catch {}
+      const inFP  = this.$in._flatpickr;
+      const outFP = this.$out._flatpickr;
+      const inISO  = inFP  && inFP.selectedDates[0]  ? inFP.formatDate(inFP.selectedDates[0], 'Y-m-d') : '';
+      const outISO = outFP && outFP.selectedDates[0] ? outFP.formatDate(outFP.selectedDates[0], 'Y-m-d') : '';
+
+      if (!inISO || !outISO) {
+        alert('Please select a check-in and check-out date.');
         return;
       }
-      const [ci, co] = this.fp.selectedDates;
-      if (!ci || !co) return;
 
-      const url = new URL(this.bookUrl, location.origin);
-      const params = url.searchParams;
-      params.set('checkin',  fmtISO(ci));
-      params.set('checkout', fmtISO(co));
-      url.search = params.toString();
+      // Build URL (supports absolute or relative book-url)
+      let url;
+      try { url = new URL(this.cfg.bookUrl, window.location.href); }
+      catch { url = new URL(String(this.cfg.bookUrl), window.location.origin); }
 
-      if ((this.getAttribute('target') || 'same') === 'new') {
-        window.open(url.toString(), '_blank', 'noopener,noreferrer');
-      } else {
-        location.href = url.toString();
-      }
+      url.searchParams.set('checkin',  inISO);
+      url.searchParams.set('checkout', outISO);
+      window.location.href = url.toString();
     }
   }
 
