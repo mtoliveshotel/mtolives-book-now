@@ -1,236 +1,310 @@
-/*! mtolives-book-now v1.0.0 | (c) 2025 Mount of Olives Hotel Ltd. | MIT */
+/*! mtolives-book-now v0.4.0 | (c) 2025 Mount of Olives Hotel Ltd. | MIT */
 (() => {
-  const WIDGET_VERSION = '1.0.0';
+  const WIDGET_VERSION = '0.4.0';
   console.info(`mtolives-book-now ${WIDGET_VERSION} loaded`);
 
-  // ---------- small helpers ----------
-  const once = (k, fn) => (once[k] ? undefined : (once[k] = fn()));
-  const toAbs = (u) => new URL(u, location.href).href;
-
+  // ----------------- tiny utilities -----------------
+  const once = (k, fn) => (once[k] ? once[k] : (once[k] = fn()));
   const loadScript = (src) =>
     new Promise((res, rej) => {
-      const abs = toAbs(src);
-      if ([...document.scripts].some(s => toAbs(s.src) === abs)) return res();
       const s = document.createElement('script');
-      s.src = abs; s.defer = true;
+      s.src = src;
+      s.async = true;
       s.onload = res;
-      s.onerror = () => rej(new Error(`Failed to load script: ${abs}`));
+      s.onerror = () => rej(new Error(`Failed to load ${src}`));
       document.head.appendChild(s);
     });
 
   const loadCss = (href) =>
     new Promise((res, rej) => {
-      const abs = toAbs(href);
-      if ([...document.querySelectorAll('link[rel="stylesheet"]')].some(l => toAbs(l.href) === abs)) return res();
       const l = document.createElement('link');
       l.rel = 'stylesheet';
-      l.href = abs;
+      l.href = href;
       l.onload = res;
-      l.onerror = () => rej(new Error(`Failed to load CSS: ${abs}`));
+      l.onerror = () => rej(new Error(`Failed to load ${href}`));
       document.head.appendChild(l);
     });
 
-  const loadScriptWithFallback = async (localUrl, cdnUrl) => {
-    try { await loadScript(localUrl); }
-    catch { await loadScript(cdnUrl); }
-  };
-  const loadCssWithFallback = async (localUrl, cdnUrl) => {
-    try { await loadCss(localUrl); }
-    catch { await loadCss(cdnUrl); }
+  const loadWithFallback = async (primary, fallback, loader) => {
+    try { await loader(primary); }
+    catch { await loader(fallback); }
   };
 
-  // ---------- resolve where THIS file lives (works on cPanel & GitHub Pages) ----------
-  const THIS_FILENAME = 'mtolives-book-now.js';
-  function getScriptBase() {
-    // Prefer the tag that loaded this script
-    if (document.currentScript && document.currentScript.src) {
-      return new URL('.', document.currentScript.src).href.replace(/\/$/, '');
-    }
-    // Fallback: find by filename
-    for (const s of document.querySelectorAll('script[src]')) {
-      if (s.src.includes(THIS_FILENAME)) {
-        return new URL('.', s.src).href.replace(/\/$/, '');
-      }
-    }
-    // Last resort: assume current document
-    return location.origin + location.pathname.replace(/\/[^/]*$/, '');
+  const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
+  const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+  const diffNights = (a, b) => Math.round((b - a) / 86400000);
+  const fmtISO = (d) => d.toISOString().slice(0,10); // YYYY-MM-DD
+
+  // ----------------- resolve base paths -----------------
+  function getSelfBase() {
+    // Find the <script> tag that loaded this file and derive its directory.
+    const rx = /\/mtolives-book-now(\.min)?\.js/i;
+    const tag = Array.from(document.scripts).find(s => rx.test(s.src));
+    if (tag) return tag.src.replace(rx, '');
+
+    // Sensible defaults if we can't detect the loader tag:
+    if (location.pathname.startsWith('/mtolives-book-now/')) return '/mtolives-book-now'; // GitHub Pages repo root
+    if (location.pathname.startsWith('/widgets/mtolives-book-now/')) return '/widgets/mtolives-book-now'; // cPanel
+    return '.'; // current directory
   }
-  const SCRIPT_BASE   = getScriptBase();                         // e.g. https://.../mtolives-book-now  or  https://.../widgets/mtolives-book-now
-  const FP_LOCAL_BASE = `${SCRIPT_BASE}/vendor/flatpickr`;       // local vendor next to the JS
-  const FP_CDN_BASE   = 'https://cdn.jsdelivr.net/npm/flatpickr@4.6.13';
 
-  // Load calendar CSS globally (popup renders in <body>, not shadow)
-  once('flatpickr-css', () =>
-    loadCssWithFallback(
-      `${FP_LOCAL_BASE}/flatpickr.min.css`,
-      `${FP_CDN_BASE}/dist/flatpickr.min.css`
-    )
-  );
+  const SELF_BASE     = getSelfBase();                        // e.g. /mtolives-book-now
+  const FP_LOCAL_DIR  = `${SELF_BASE}/vendor/flatpickr`;      // vendored copy (if present)
+  const FP_CDN_DIST   = 'https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist';
+  const FP_CDN_ROOT   = 'https://cdn.jsdelivr.net/npm/flatpickr@4.6.13';
 
-  // tiny visual polish for the popup + safer z-index
-  once('mtolives-global-calendar-css', () => {
-    const style = document.createElement('style');
-    style.textContent = `
-      .flatpickr-calendar {
-        border: 1px solid rgba(0,0,0,.08)!important;
-        box-shadow: 0 10px 30px rgba(0,0,0,.18)!important;
-        z-index: 999999;
-      }
-      .flatpickr-day.selected, .flatpickr-day.startRange, .flatpickr-day.endRange { background:#4a90e2; border-color:#4a90e2; color:#fff }
-      .flatpickr-day.inRange { background: rgba(74,144,226,.16) }
-      .flatpickr-prev-month svg, .flatpickr-next-month svg { width:14px; height:14px; display:inline-block }
+  // Ensure Flatpickr (CSS + core + rangePlugin) exactly once, with local→CDN fallbacks
+  let ENSURE_FP;
+  function ensureFlatpickr() {
+    if (ENSURE_FP) return ENSURE_FP;
+    ENSURE_FP = (async () => {
+      // CSS (global; popup renders in <body>)
+      await loadWithFallback(
+        `${FP_LOCAL_DIR}/flatpickr.min.css`,
+        `${FP_CDN_DIST}/flatpickr.min.css`,
+        loadCss
+      );
+      // Core JS
+      await loadWithFallback(
+        `${FP_LOCAL_DIR}/flatpickr.min.js`,
+        `${FP_CDN_ROOT}/flatpickr.min.js`,
+        loadScript
+      );
+      // rangePlugin JS
+      await loadWithFallback(
+        `${FP_LOCAL_DIR}/plugins/rangePlugin.js`,
+        `${FP_CDN_DIST}/plugins/rangePlugin.js`,
+        loadScript
+      );
+      if (!window.flatpickr) throw new Error('flatpickr not available after load');
+      return window.flatpickr;
+    })();
+    return ENSURE_FP;
+  }
+
+  // A little global polish for the popup calendar
+  once('global-calendar-css', () => {
+    const css = `
+      .flatpickr-calendar{border:1px solid rgba(0,0,0,.08)!important;box-shadow:0 12px 32px rgba(0,0,0,.22)!important}
+      .flatpickr-day.selected,
+      .flatpickr-day.startRange,
+      .flatpickr-day.endRange{background:var(--fp-accent,#4a90e2);border-color:var(--fp-accent,#4a90e2);color:#fff}
+      .flatpickr-day.inRange{background:rgba(74,144,226,.15)}
     `;
-    document.head.appendChild(style);
+    const s = document.createElement('style');
+    s.textContent = css;
+    document.head.appendChild(s);
   });
 
-  async function ensureFlatpickrLoaded(locale) {
-    // core + range plugin (local first, CDN fallback)
-    await loadScriptWithFallback(
-      `${FP_LOCAL_BASE}/flatpickr.min.js`,
-      `${FP_CDN_BASE}/dist/flatpickr.min.js`
-    );
-    await loadScriptWithFallback(
-      `${FP_LOCAL_BASE}/plugins/rangePlugin.js`,
-      `${FP_CDN_BASE}/dist/plugins/rangePlugin.js`
-    );
-    // optional locale
-    if (locale && locale.toLowerCase() !== 'en') {
-      const l = locale.toLowerCase();
-      try { await loadScript(`${FP_LOCAL_BASE}/l10n/${l}.js`); }
-      catch { try { await loadScript(`${FP_CDN_BASE}/dist/l10n/${l}.js`); } catch {} }
-    }
-  }
-
-  // ---------- web component ----------
+  // ----------------- Web Component -----------------
   class MtOlivesBookNow extends HTMLElement {
-    static get observedAttributes() { return ['book-url','show-months','popup','display-format','locale']; }
+    static get observedAttributes() {
+      return [
+        // behavior / data
+        'book-url','target','show-months','popup','display-format','locale',
+        'min-nights','max-nights','allow-same-day',
+        // design tokens
+        'accent','hover','teal','field-width','rounded','density','shadow','align'
+      ];
+    }
 
     constructor() {
       super();
-      this.attachShadow({ mode:'open' });
+      this.attachShadow({ mode: 'open' });
       this.shadowRoot.innerHTML = `
         <style>
           :host{
-            --olive:#808000; --hover-blue:#4a90e2; --teal:#26bac5;
-            --fieldW:260px; --fieldH:46px; --radius:0px; --gap:12px;
-            --font:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial,"Noto Sans","Liberation Sans",sans-serif;
+            --accent: #808000;          /* olive */
+            --hover:  #4a90e2;          /* blue */
+            --teal:   #2bb6c1;          /* inner frame hint */
+            --fieldW: 260px;
+            --rounded: 6px;
+            --density: 12px;            /* vertical padding inside fields */
+            --shadow: 0 10px 28px rgba(0,0,0,.18);
+            --align: left;               /* left|center */
           }
-          *,*::before,*::after{box-sizing:border-box;font-family:var(--font)}
-          .bar{display:inline-flex;align-items:center;gap:var(--gap);flex-wrap:wrap;position:relative}
-          .field{display:flex;flex-direction:column;gap:6px}
-          .field label{font-size:12px;color:#6b7280;line-height:1}
-          .field input{
-            width:var(--fieldW);max-width:100%;height:var(--fieldH);padding:10px 12px;
-            border:1px solid rgba(0,0,0,.22);border-radius:var(--radius);background:#fff;outline:none;
-            box-shadow:inset 0 0 0 1px rgba(38,186,197,.75);
-            transition:border-color .15s ease, box-shadow .15s ease;
+          *,*::before,*::after{ box-sizing:border-box }
+          .wrap{ display:flex; justify-content: var(--align) ; }
+          .bar{ display:flex; gap:12px; align-items:center; flex-wrap:nowrap; }
+          .group{ display:flex; flex-direction:column; gap:6px; }
+          label{ font: 500 12px/1.2 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:#444 }
+          .field{
+            width:var(--fieldW);
+            padding:var(--density) 14px;
+            border:1px solid rgba(0,0,0,.18);
+            border-radius:var(--rounded);
+            outline:none;
+            font: 500 14px/1.3 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+            background:#fff;
+            box-shadow: inset 0 0 0 1px transparent;
+            transition: box-shadow .15s ease, border-color .15s ease;
           }
-          .field input:hover{border-color:rgba(0,0,0,.28)}
-          .field input:focus{border-color:rgba(0,0,0,.35);box-shadow:inset 0 0 0 2px rgba(38,186,197,.85)}
-          .book-btn{
-            height:var(--fieldH);padding:0 26px;border:0;border-radius:24px;
-            background:var(--olive);color:#000;cursor:pointer;
-            transition:background .18s ease,color .18s ease,transform .08s ease
+          .field:focus{
+            border-color: rgba(0,0,0,.35);
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,.15);
           }
-          .book-btn:hover{background:var(--hover-blue);color:#fff}
-          .book-btn:active{transform:translateY(1px)}
+          :host([teal]) .field{ box-shadow: inset 0 0 0 1px var(--teal); }
+
+          .btn{
+            border:none; cursor:pointer; user-select:none;
+            padding: calc(var(--density) + 2px) 20px;
+            border-radius: 999px;
+            background: var(--accent);
+            color: #111;
+            font: 700 14px/1 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+            box-shadow: var(--shadow);
+            transition: transform .04s ease, background .15s ease, color .15s ease;
+            white-space:nowrap;
+          }
+          .btn:hover{ background: var(--hover); color:#fff; }
+          .btn:active{ transform: translateY(1px); }
+
+          /* alignment helper */
+          :host([align="center"]) .wrap{ justify-content:center; }
+          :host([align="left"]) .wrap{ justify-content:flex-start; }
+          :host([align="right"]) .wrap{ justify-content:flex-end; }
+
+          /* allow tokens via attributes */
+          :host([accent]){ --accent: attr(accent color, color); }
+          :host([hover]) { --hover:  attr(hover color, color); }
+          :host([field-width]){ --fieldW: attr(field-width px); }
+          :host([rounded]){ --rounded: attr(rounded px); }
+          :host([density]){ --density: attr(density px); }
+          :host([shadow]){ --shadow: attr(shadow); }
         </style>
-        <div class="bar" part="bar">
-          <div class="field">
-            <label for="checkin">Check-in</label>
-            <input id="checkin" type="text" aria-label="Check-in" placeholder="" readonly>
+
+        <div class="wrap">
+          <div class="bar">
+            <div class="group">
+              <label id="ci-lab">Check-in</label>
+              <input class="field" id="ci" aria-labelledby="ci-lab" autocomplete="off" />
+            </div>
+            <div class="group">
+              <label id="co-lab">Check-out</label>
+              <input class="field" id="co" aria-labelledby="co-lab" autocomplete="off" />
+            </div>
+            <button class="btn" id="go">BOOK NOW</button>
           </div>
-          <div class="field">
-            <label for="checkout">Check-out</label>
-            <input id="checkout" type="text" aria-label="Check-out" placeholder="" readonly>
-          </div>
-          <button type="button" class="book-btn">BOOK NOW</button>
         </div>
       `;
     }
 
-    connectedCallback(){ this.init(); }
-    attributeChangedCallback(){ if (this.isConnected) this.init(true); }
+    // -------- lifecycle --------
+    connectedCallback() {
+      // defaults
+      this.bookUrl       = this.getAttribute('book-url') || 'https://www.mtoliveshotel.com/book-now';
+      this.target        = this.getAttribute('target') || 'same';        // same|new
+      this.showMonths    = clamp(parseInt(this.getAttribute('show-months')||'2',10) || 2, 1, 3);
+      this.popup         = (this.getAttribute('popup') || 'below');      // below|above|auto
+      this.displayFormat = this.getAttribute('display-format') || 'd M Y';
+      this.locale        = this.getAttribute('locale') || 'en';
+      this.minNights     = parseInt(this.getAttribute('min-nights')||'1',10) || 1;
+      this.maxNights     = parseInt(this.getAttribute('max-nights')||'0',10) || 0; // 0 = unlimited
+      this.allowSameDay  = this.hasAttribute('allow-same-day');
 
-    async init() {
-      const locale = (this.getAttribute('locale') || 'en').toLowerCase();
-      await ensureFlatpickrLoaded(locale);
+      // expose accent to calendar via CSS var
+      document.documentElement.style.setProperty('--fp-accent', getComputedStyle(this).getPropertyValue('--hover') || '#4a90e2');
 
-      const checkin  = this.shadowRoot.querySelector('#checkin');
-      const checkout = this.shadowRoot.querySelector('#checkout');
-      const btn      = this.shadowRoot.querySelector('.book-btn');
+      // wires
+      this.$ci = this.shadowRoot.getElementById('ci');
+      this.$co = this.shadowRoot.getElementById('co');
+      this.$go = this.shadowRoot.getElementById('go');
+      this.$go.addEventListener('click', () => this.handleGo());
 
-      const displayFormat = this.getAttribute('display-format') || 'd M Y';
-      const showMonths    = Number(this.getAttribute('show-months') || 2);
-      const posAttr       = (this.getAttribute('popup') || 'above').toLowerCase();
-      const position      = ['above','below','auto','auto left','auto center','auto right'].includes(posAttr) ? posAttr : 'above';
+      // init calendar
+      ensureFlatpickr().then(() => this.initPicker()).catch(console.error);
+    }
 
-      if (this.fpRange && this.fpRange.destroy) this.fpRange.destroy();
+    attributeChangedCallback(name, _o, _n) {
+      // If attributes change after mount, re-init simple ones
+      if (!this.$ci) return;
+      if (['show-months','popup','display-format','min-nights','max-nights','allow-same-day','locale'].includes(name)) {
+        try { this.fp && this.fp.destroy(); } catch {}
+        ensureFlatpickr().then(() => this.initPicker()).catch(console.error);
+      }
+    }
 
-      // RTL tweak
-      if (locale === 'ar' || locale === 'he') this.shadowRoot.host.setAttribute('dir','rtl');
-      else this.shadowRoot.host.removeAttribute('dir');
-
-      this.fpRange = flatpickr(checkin, {
-        locale,
-        dateFormat: displayFormat,     // visible format
+    // -------- calendar init + validation --------
+    initPicker() {
+      const fpOpts = {
+        dateFormat: this.displayFormat,       // what shows in the inputs
         allowInput: false,
         clickOpens: true,
-        showMonths,
-        position,
-        plugins: [ new rangePlugin({ input: checkout }) ],
-        onChange: (dates) => {
-          const ci = dates[0], co = dates[1];
-          checkin.value  = ci ? this.formatDisplay(ci, displayFormat) : '';
-          checkout.value = co ? this.formatDisplay(co, displayFormat) : '';
-        },
-      });
+        position: this.popup,                 // "above" | "below" | "auto"
+        showMonths: this.showMonths,
+        // Locale: pass-through; if unsupported, Flatpickr will default to English
+        locale: this.locale,
+        // Link the second input with rangePlugin
+        plugins: [ new rangePlugin({ input: this.$co }) ],
+        onChange: (sel) => this.onChange(sel),
+      };
 
-      if (!this._wired){
-        btn.addEventListener('click', (e) => { e.preventDefault(); this.bookNow(); });
-        this._wired = true;
+      // Flatpickr attaches to the FIRST input; second is wired by rangePlugin
+      this.fp = window.flatpickr(this.$ci, fpOpts);
+      // If same-day not allowed, bump co minDate dynamically when ci changes
+      this.$ci.addEventListener('change', () => {
+        if (!this.fp || !this.fp.selectedDates?.length) return;
+        const ci = this.fp.selectedDates[0];
+        const minCo = this.allowSameDay ? ci : addDays(ci, 1);
+        this.fp.set('minDate', null); // avoid conflict on core picker
+        // rangePlugin handles min constraint implicitly; we enforce in onChange
+      });
+    }
+
+    onChange(sel) {
+      if (!sel || sel.length === 0) return;
+      const ci = sel[0];
+      let co  = sel[1] || null;
+
+      // if only ci selected, ensure co respects same-day policy when it arrives
+      if (!co) return;
+
+      // enforce same-day if disallowed
+      if (!this.allowSameDay && diffNights(ci, co) === 0) {
+        co = addDays(ci, 1);
+      }
+
+      // enforce min/max nights
+      const minN = Math.max(0, this.minNights);
+      const maxN = Math.max(0, this.maxNights); // 0 => unlimited
+
+      let nights = diffNights(ci, co);
+      if (minN > 0 && nights < minN) {
+        co = addDays(ci, minN);
+        nights = minN;
+      }
+      if (maxN > 0 && nights > maxN) {
+        co = addDays(ci, maxN);
+        nights = maxN;
+      }
+
+      // write back if we modified end date
+      if (sel[1] !== co) {
+        // setDate accepts array [start,end] and will update both inputs
+        this.fp.setDate([ci, co], true);
       }
     }
 
-    bookNow(){
-      const dates = (this.fpRange && this.fpRange.selectedDates) ? this.fpRange.selectedDates : [];
-      const ciEl  = this.shadowRoot.querySelector('#checkin');
-      const coEl  = this.shadowRoot.querySelector('#checkout');
-
-      let checkIn  = dates[0] || (ciEl.value ? new Date(ciEl.value) : null);
-      let checkOut = dates[1] || (coEl.value ? new Date(coEl.value) : null);
-
-      if (checkIn && !checkOut) checkOut = new Date(checkIn.getFullYear(), checkIn.getMonth(), checkIn.getDate() + 1);
-
-      if (!checkIn || !checkOut || checkOut <= checkIn){
-        this.nudge();
-        if (this.fpRange && this.fpRange.open) this.fpRange.open();
+    // -------- submit --------
+    handleGo() {
+      if (!this.fp || this.fp.selectedDates.length < 2) {
+        // open calendar if not complete
+        try { this.fp.open(); } catch {}
         return;
       }
+      const [ci, co] = this.fp.selectedDates;
+      if (!ci || !co) return;
 
-      const urlBase = this.getAttribute('book-url') || '/book-now';
-      const url = urlBase.startsWith('http') ? new URL(urlBase) : new URL(urlBase, location.origin);
+      const url = new URL(this.bookUrl, location.origin);
+      const params = url.searchParams;
+      params.set('checkin',  fmtISO(ci));
+      params.set('checkout', fmtISO(co));
+      url.search = params.toString();
 
-      url.searchParams.set('checkin',  this.toYMD(checkIn));
-      url.searchParams.set('checkout', this.toYMD(checkOut));
-
-      if (this.fpRange && this.fpRange.close) this.fpRange.close();
-      location.href = url.toString();
-    }
-
-    toYMD(d){ const p=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`; }
-    formatDisplay(d, fmt){
-      if (window.flatpickr && flatpickr.formatDate) return flatpickr.formatDate(d, fmt);
-      const m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-      return `${String(d.getDate()).padStart(2,'0')} ${m[d.getMonth()]} ${d.getFullYear()}`;
-    }
-    nudge(){
-      const el = this.shadowRoot.querySelector('.bar');
-      if (el && el.animate){
-        el.animate(
-          [{transform:'translateX(0)'},{transform:'translateX(-4px)'},{transform:'translateX(4px)'},{transform:'translateX(0)'}],
-          {duration:280,easing:'ease-in-out'}
-        );
+      if ((this.getAttribute('target') || 'same') === 'new') {
+        window.open(url.toString(), '_blank', 'noopener,noreferrer');
+      } else {
+        location.href = url.toString();
       }
     }
   }
