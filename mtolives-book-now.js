@@ -40,7 +40,8 @@
   };
 
   // ---------- third-party assets (local first, CDN fallback) ----------
-  const FP_LOCAL_BASE = '/widgets/mtolives-book-now/vendor/flatpickr';
+  // const FP_LOCAL_BASE = '/widgets/mtolives-book-now/vendor/flatpickr';
+  const FP_LOCAL_BASE = '/mtolives-book-now/vendor/flatpickr';
   const FP_CDN_BASE   = 'https://cdn.jsdelivr.net/npm/flatpickr@4.6.13';
 
   // Load calendar CSS globally (popup renders in <body>, not shadow)
@@ -227,3 +228,4 @@
 
   customElements.define('mtolives-book-now', MtOlivesBookNow);
 })();
+
