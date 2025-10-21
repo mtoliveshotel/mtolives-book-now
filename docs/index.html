@@ -1,59 +1,66 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>mtolives-book-now — v0.4 demo</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
 
-  <!-- Only load the widget. It will pull Flatpickr locally with CDN fallback. -->
-  <script defer src="./mtolives-book-now.js?v=0.4.2"></script>
+  <link rel="icon" href="./mtolives.ico">
 
+  <!-- Local Flatpickr (load before the widget) -->
+  <link rel="stylesheet" href="./vendor/flatpickr/flatpickr.min.css?v=1">
+  <script defer src="./vendor/flatpickr/flatpickr.min.js?v=1"></script>
+  <script defer src="./vendor/flatpickr/plugins/rangePlugin.js"></script>
+
+  <!-- Widget (v0.4) — has CDN fallback built-in if locals fail -->
+  <script defer src="./mtolives-book-now.js?v=0.4.0"></script>
+
+  <!-- Simple page centering so the popup opens on–screen -->
   <style>
-    :root { color-scheme: light; }
-    html, body { height: 100%; margin: 0; }
-    body {
-      display: grid;
-      place-items: start center;
-      padding: 32px;
-      background: #fff;
-      font: 14px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-      color: #1e1f23;
+    html,body{height:100%}
+    body{
+      margin:0;display:flex;align-items:flex-start;justify-content:center;
+      padding:32px;background:#fff
     }
-    .demo {
-      width: min(880px, calc(100vw - 32px));
-      background: #fff;
-      border-radius: 16px;
-      box-shadow: 0 8px 28px rgba(0,0,0,.10);
-      padding: 18px 20px 22px;
+    .card{
+      padding:20px 24px;border:1px solid #e5e7eb;border-radius:12px;
+      box-shadow:0 10px 24px rgba(0,0,0,.06); max-width:960px
     }
-    h1 { font-size: 16px; margin: 0 0 8px; }
-    p  { margin: 8px 0 16px; color: rgba(0,0,0,.7); }
-    .row { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
-    .spacer { height: 8px; }
-    a { color:#245bc5; text-decoration: none; }
-    a:hover { text-decoration: underline; }
+    h1{margin:0 0 12px;font:600 18px/1.3 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+    p{margin:0 0 16px;color:#444;font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+
+    /* Make disabled (past) days a touch more visible */
+    .flatpickr-day.flatpickr-disabled { color: rgba(0,0,0,.32) !important; }
   </style>
 </head>
 <body>
-  <div class="demo">
-    <h1><strong>mtolives-book-now</strong> — v0.4 demo</h1>
-    <p>Select a date range and click <strong>BOOK NOW</strong> to test the URL handoff.</p>
+  <div class="card">
+    <h1>mtolives-book-now — v0.4 demo</h1>
+    <p>Select a date range and click BOOK NOW to test the URL handoff.</p>
 
-    <div class="row">
-      <mtolives-book-now
-        book-url="https://www.mtoliveshotel.com/book-now"
-        show-months="2"
-        display-format="d M Y"
-        locale=""
-        min-nights="0"
-        max-nights="0"
-        allow-same-day="false"
-        popup="below">
-      </mtolives-book-now>
-    </div>
+    <!-- Widget -->
+    <mtolives-book-now
+      book-url="https://www.mtoliveshotel.com/book-now"
+      show-months="2"
+      popup="below"
+      display-format="d M Y"
+      locale="en"
+      min-nights="1"
+      max-nights="0"
+      align="center"
+      style="
+        --fieldW: 260px;      /* input width */
+        --rounded: 6px;       /* corner radius */
+        --density: 10px;      /* vertical padding (smaller = shorter fields) */
+        --accent: #808000;    /* olive button/accents */
+        --hover: #4a90e2;     /* hover-blue for range highlight */
+        --shadow: 0 10px 28px rgba(0,0,0,.18);
+      ">
+    </mtolives-book-now>
 
-    <div class="spacer"></div>
-    <p>Groups (8+ rooms)? <a href="https://test.mtolives.com/groups/requests/index.html?v=18" target="_blank" rel="noopener">Request a quote</a></p>
+    <p style="margin-top:14px">
+      Groups (8+ rooms)? <a href="https://test.mtolives.com/groups/requests/index.html" target="_blank" rel="noopener">Request a quote</a>
+    </p>
   </div>
 </body>
 </html>
