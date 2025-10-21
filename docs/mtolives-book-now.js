@@ -19,9 +19,18 @@
     const style = document.createElement('style');
     style.textContent = `
       .flatpickr-calendar{border:1px solid rgba(0,0,0,.08)!important;box-shadow:0 10px 30px rgba(0,0,0,.18)!important}
-      .flatpickr-day.selected,.flatpickr-day.startRange,.flatpickr-day.endRange{background:#4a90e2;border-color:#4a90e2;color:#fff}
-      .flatpickr-day.inRange{background:rgba(74,144,226,.16)}
-      .flatpickr-day.flatpickr-disabled{opacity:.55}
+
+      // .flatpickr-day.selected,.flatpickr-day.startRange,.flatpickr-day.endRange{background:#4a90e2;border-color:#4a90e2;color:#fff}
+      // .flatpickr-day.inRange{background:rgba(74,144,226,.16)}
+      // .flatpickr-day.flatpickr-disabled{opacity:.55}
+      .flatpickr-day.selected,.flatpickr-day.startRange,.flatpickr-day.endRange{background:#808000;border-color:#808000;color:#fff}
+      .flatpickr-day.inRange{background:rgba(128,128,0,.18)}
+      .flatpickr-day.flatpickr-disabled,
+      .flatpickr-day.disabled,
+      .flatpickr-day.disabled:hover,
+      .flatpickr-day.prevMonthDay,
+      .flatpickr-day.nextMonthDay{background:#e5e7eb;color:#6b7280;opacity:1 !important;box-shadow:none !important;cursor:not-allowed !important}
+
       .fp-intent-pill{font:600 12px/1 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#2b2b2b;
         background:#f4f6f8;border:1px solid #e5e7eb;border-radius:999px;padding:6px 10px;margin:8px 10px}
     `;
