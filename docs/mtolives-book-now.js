@@ -63,6 +63,19 @@
             font-weight:700;letter-spacing:.02em;cursor:pointer;box-shadow:var(--shadow);height:42px;
           }
           button:disabled{opacity:.5;cursor:not-allowed}
+
+          /* Darker disabled/past days */
+          .flatpickr-day.disabled,
+          .flatpickr-day.disabled:hover,
+          .flatpickr-day.prevMonthDay,
+          .flatpickr-day.nextMonthDay{
+             background:#e5e7eb;
+             color:#6b7280;
+             opacity:1 !important;
+            box-shadow:none !important;
+            cursor:not-allowed !important;
+          }
+
         </style>
         <div class="bar ${labels === 'none' ? 'hideLabel' : ''}">
           <div class="group"><label>Check-in</label><input id="checkin" type="text" placeholder="Check-in" inputmode="none"></div>
