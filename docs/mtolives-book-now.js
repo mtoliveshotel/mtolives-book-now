@@ -1,14 +1,13 @@
-/*! mtolives-book-now v0.4.2 | (c) 2025 Mount of Olives Hotel Ltd. | MIT */
+/*! mtolives-book-now v0.4.3 | (c) 2025 Mount of Olives Hotel Ltd. | MIT */
 (() => {
-  const WIDGET_VERSION = '0.4.2';
+  const WIDGET_VERSION = '0.4.3';
   console.info(`mtolives-book-now ${WIDGET_VERSION} loaded`);
 
-  // ---------- tiny helpers ----------
+  // ---------- helpers ----------
   const once = (key, fn) => (once[key] ? undefined : (once[key] = fn()));
   const loadScript = (src) => new Promise((res, rej) => {
     const s = document.createElement('script');
-    s.src = src; s.defer = true;
-    s.onload = res; s.onerror = rej;
+    s.src = src; s.defer = true; s.onload = res; s.onerror = rej;
     document.head.appendChild(s);
   });
   const loadCss = (href) => {
@@ -16,12 +15,12 @@
     l.rel = 'stylesheet'; l.href = href;
     document.head.appendChild(l);
   };
-  const fmt = (d) => {
+  const fmtYMD = (d) => {
     const p = (n) => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
   };
 
-  // Global calendar polish (calendar lives outside shadow)
+  // Global calendar polish (calendar renders in <body>, not shadow)
   once('global-flatpickr-css', () => {
     const css = `
       .flatpickr-calendar{border:1px solid rgba(0,0,0,.08)!important;box-shadow:0 10px 30px rgba(0,0,0,.18)!important}
@@ -37,42 +36,48 @@
 
   class MtOlivesBookNow extends HTMLElement {
     static get observedAttributes() {
-      return ['book-url','show-months','popup','display-format','locale','min-nights','max-nights','align'];
+      return ['book-url','show-months','popup','display-format',
+              'locale','min-nights','max-nights','align','labels'];
     }
 
-    constructor() {
+    constructor(){
       super();
       this.attachShadow({mode:'open'});
 
       const accent  = this.getAttribute('accent') || '#808000';
-      const hover   = this.getAttribute('hover')  || '#4a90e2';
       const rounded = this.getAttribute('rounded')|| '10px';
+      const labels  = (this.getAttribute('labels') || 'none').toLowerCase(); // 'none' | 'show'
 
       this.shadowRoot.innerHTML = `
         <style>
           :host{
-            --accent:${accent}; --hover:${hover};
+            --accent:${accent};
             --fieldW:250px; --rounded:${rounded};
-            --density:12px; --shadow:0 10px 28px rgba(0,0,0,.18);
+            --shadow:0 10px 28px rgba(0,0,0,.18);
             font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
           }
           *,*::before,*::after{box-sizing:border-box}
-          .bar{display:flex;gap:12px;align-items:center}
+          .bar{display:flex;gap:12px;align-items:center} /* center vertically */
           :host([align="center"]) .bar{justify-content:center}
+
           .group{display:flex;flex-direction:column;gap:6px}
           label{font-weight:600;color:#2b2b2b}
+          .hideLabel label{display:none}  /* default: no duplicate labels */
+
           input{
-            width:var(--fieldW);padding:var(--density) 12px;border:1px solid #d9dde2;border-radius:var(--rounded);
+            width:var(--fieldW);padding:12px;border:1px solid #d9dde2;border-radius:var(--rounded);
             outline:none;background:#fff;box-shadow:0 1px 0 rgba(0,0,0,.04) inset;
+            height:42px; /* consistent height = easier centering */
           }
           input:focus{border-color:#67b1ff;box-shadow:0 0 0 3px rgba(103,177,255,.22)}
+
           button{
             padding:10px 18px;border-radius:999px;border:0;background:var(--accent);color:#000;
-            font-weight:700;letter-spacing:.02em;cursor:pointer;box-shadow:var(--shadow)
+            font-weight:700;letter-spacing:.02em;cursor:pointer;box-shadow:var(--shadow);height:42px;
           }
           button:disabled{opacity:.5;cursor:not-allowed}
         </style>
-        <div class="bar">
+        <div class="bar ${labels === 'none' ? 'hideLabel' : ''}">
           <div class="group">
             <label>Check-in</label>
             <input id="checkin" type="text" placeholder="Check-in" inputmode="none" />
@@ -87,15 +92,12 @@
     }
 
     connectedCallback(){ this.init(); }
-    attributeChangedCallback() {}
 
     async ensureFlatpickr(){
       if (window.flatpickr) return;
-
       const LOCAL = './vendor/flatpickr';
       const CDN   = 'https://cdn.jsdelivr.net/npm/flatpickr@4.6.13';
 
-      // CSS first (fallback via onerror path), then JS & plugin with try/catch
       once('flatpickr-css', () => loadCss(`${LOCAL}/flatpickr.min.css`));
       try { await loadScript(`${LOCAL}/flatpickr.min.js`); }
       catch { await loadScript(`${CDN}/dist/flatpickr.min.js`); }
@@ -111,76 +113,60 @@
       const inputOut  = root.getElementById('checkout');
       const btn       = root.getElementById('book');
 
-      const showMonths   = Number(this.getAttribute('show-months') || '2');
-      const displayFmt   = this.getAttribute('display-format') || 'd M Y';
-      const popup        = (this.getAttribute('popup') || 'below'); // 'below'|'above'
-      const minNights    = Number(this.getAttribute('min-nights') || '1');
-      const align        = this.getAttribute('align') || 'center';
+      const showMonths = Number(this.getAttribute('show-months') || '2');
+      const displayFmt = this.getAttribute('display-format') || 'd M Y';
+      const align      = this.getAttribute('align') || 'center';
+      const minNights  = Math.max(1, Number(this.getAttribute('min-nights') || '1'));
 
-      // Track which field opened the calendar
-      let activeField = null;
-      ['mousedown','focus','click'].forEach(ev => {
-        inputIn .addEventListener(ev, () => { activeField = 'in';  });
-        inputOut.addEventListener(ev, () => { activeField = 'out'; });
-      });
+      // Track which field opened (for the little "intent pill" only)
+      let openedBy = 'in';
+      inputIn .addEventListener('mousedown', () => { openedBy = 'in';  }, {capture:true});
+      inputOut.addEventListener('mousedown', () => { openedBy = 'out'; }, {capture:true});
 
-      // Build a single Flatpickr instance on the "in" input and pair it
       const fp = flatpickr(inputIn, {
         plugins: [ new rangePlugin({ input: inputOut }) ],
-        showMonths,
-        disableMobile:true,
-        // let the picker float; avoids odd layout in some contexts
-        static:false,
+        showMonths, disableMobile:true, static:false,
+        minDate:'today', dateFormat:displayFmt, allowInput:false,
 
-        minDate:'today',
-        dateFormat:displayFmt,
-        altInput:false,
-        allowInput:false,
-
+        // NOTE: we do *not* clear on open anymore — this was causing resets
         onOpen: (_sel,_str,inst) => {
-          // If user clicked "Check-in", start fresh
-          if (activeField === 'in') {
-            inst.clear();
-            inputIn.value = ''; inputOut.value = '';
-          }
-          // Keep months steady if we already have a start
           if (inst.selectedDates[0]) inst.jumpToDate(inst.selectedDates[0], true);
-          this.updateIntentPill(inst, activeField === 'out' ? 'end' : 'start');
+          this.intentPill(inst, openedBy === 'out' ? 'end' : 'start');
         },
 
         onChange: (dates,_s,inst) => {
           if (dates.length === 1) {
+            // Let flatpickr show the day; we also mirror to the input for clarity
             inputIn.value = inst.formatDate(dates[0], displayFmt);
-            return; // wait for end date
+            return;
           }
           if (dates.length === 2) {
             const [s,e] = dates;
-            // min nights check (if configured)
-            if (minNights > 1) {
-              const nights = Math.round((e - s) / 86400000);
-              if (nights < minNights) return; // ignore too-short range
-            }
+            const nights = Math.round((e - s) / 86400000);
+            if (nights < minNights) return; // too short, ignore
+
             inputIn.value  = inst.formatDate(s, displayFmt);
             inputOut.value = inst.formatDate(e, displayFmt);
+
+            // close on completed range
             setTimeout(() => inst.close(), 0);
           }
         }
       });
 
-      // BOOK NOW handoff
+      // BOOK NOW -> hand off with ?checkin=YYYY-MM-DD&checkout=YYYY-MM-DD
       btn.addEventListener('click', () => {
         const url = this.getAttribute('book-url') || '';
         const [s,e] = fp.selectedDates;
         if (!url || !s || !e) return;
-        const q = new URLSearchParams({ checkin: fmt(s), checkout: fmt(e) });
+        const q = new URLSearchParams({ checkin: fmtYMD(s), checkout: fmtYMD(e) });
         location.href = `${url}?${q.toString()}`;
       });
 
-      // reflect alignment for demo
       this.setAttribute('align', align);
     }
 
-    updateIntentPill(instance, intent){
+    intentPill(instance, intent){
       const c = instance.calendarContainer;
       let pill = c.querySelector('.fp-intent-pill');
       const text = intent === 'end' ? 'Choose check-out' : 'Choose check-in';
