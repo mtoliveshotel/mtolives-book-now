@@ -152,61 +152,75 @@
       // - Clicking "Check-in" clears the old end date; clicking "Check-out" keeps start.
       let intent = 'start'; // current selection intent
 
-      // Build instance
-      const fp = window.flatpickr(inputFrom, {
-        altInput: false,
-        dateFormat: displayFormat,
-        allowInput: false,
-        clickOpens: true,
-        showMonths,
-        minDate: 'today',
-        static: false,
-        position: popup === 'above' ? 'above' : 'auto',
-        locale,
-        plugins: [ new rangePlugin({ input: inputTo }) ],
-        // --- hooks controlling the UX fixes ---
-        onOpen: (selDates, str, instance) => {
-          // Add/update intent banner
-          this.updateIntentPill(instance, intent);
 
-          // Anchor the calendar:
-          //  - picking an end? keep the start month in view
-          //  - picking a start? jump to start or today
-          const [start, end] = instance.selectedDates;
-          if (intent === 'end' && start) {
-            instance.jumpToDate(start);
-            instance.set('minDate', start);
-          } else {
-            instance.set('minDate', 'today');
-            instance.jumpToDate(start || new Date());
-          }
-        },
-        onChange: (selDates, str, instance) => {
-          // Enforce min nights when both chosen
-          if (selDates.length === 2) {
-            const [s, e] = selDates;
-            const nights = Math.ceil((e - s) / 86400000);
-            if (minNights > 1 && nights < minNights) {
-              // push end forward
-              const adj = new Date(s);
-              adj.setDate(adj.getDate() + Math.max(1, minNights));
-              instance.setDate([s, adj], true);
-              return;
-            }
-            // Close after selecting both sides
-            instance.close();
-          } else {
-            // Update intent pill while hovering/selecting
-            this.updateIntentPill(instance, selDates.length === 0 ? 'start' : 'end');
-          }
-        },
-        onReady: (dates, str, instance) => {
-          // Ensure the checkout cannot be typed earlier than start
-          inputTo.readOnly = true;
-          inputFrom.readOnly = true;
-        }
-      });
+      
+      
+// Build instance (deleted code)
+// --- Calendar setup (replaces previous flatpickr(...) block) -----------------
+const inInput  = this.shadowRoot.querySelector('input[name="checkin"]')  || this.shadowRoot.querySelector('#checkin');
+const outInput = this.shadowRoot.querySelector('input[name="checkout"]') || this.shadowRoot.querySelector('#checkout');
 
+// Track which field opened the calendar: 'in' or 'out'
+let activeField = null;
+['mousedown','focus','click'].forEach(ev => {
+  inInput .addEventListener(ev, () => { activeField = 'in';  });
+  outInput.addEventListener(ev, () => { activeField = 'out'; });
+});
+
+const displayFmt = this.getAttribute('display-format') || 'd M Y';
+
+const fp = flatpickr(inInput, {
+  // pair check-in with check-out
+  plugins: [ new rangePlugin({ input: outInput }) ],
+
+  // presentation
+  showMonths: 2,
+  static: true,
+  clickOpens: true,
+  disableMobile: true,
+
+  // dates & formatting
+  minDate: 'today',
+  dateFormat: displayFmt,
+  altInput: false,
+  allowInput: false,
+
+  // behavior: clean re-select when opening from Check-in
+  onOpen: (_sel, _str, instance) => {
+    if (activeField === 'in') {
+      // start fresh when user clicks "Check-in"
+      instance.clear();
+      inInput.value = '';
+      outInput.value = '';
+    }
+    // keep months stable if we already had a start date
+    if (instance.selectedDates[0]) {
+      instance.jumpToDate(instance.selectedDates[0], true);
+    }
+  },
+
+  // build the range and close only after two dates are chosen
+  onChange: (selectedDates, _str, instance) => {
+    if (selectedDates.length === 1) {
+      inInput.value = instance.formatDate(selectedDates[0], displayFmt);
+      return; // keep calendar open for end date
+    }
+    if (selectedDates.length === 2) {
+      const [start, end] = selectedDates;
+      inInput .value = instance.formatDate(start, displayFmt);
+      outInput.value = instance.formatDate(end,   displayFmt);
+      // close after a valid range is set
+      setTimeout(() => instance.close(), 0);
+    }
+  }
+});
+
+
+
+
+
+
+      
       // Clicking inputs sets intent + resets as required
       const clearEnd = () => {
         // Keep only a start date if present; clear checkout field
