@@ -49,7 +49,7 @@
           }
           *,*::before,*::after{box-sizing:border-box}
           .bar{display:flex;gap:12px;align-items:center}
-          :|:host([align="center"]) .bar{justify-content:center}
+          :host([align="center"]) .bar{justify-content:center}
           .group{display:flex;flex-direction:column;gap:6px}
           label{font-weight:600;color:#2b2b2b}
           .hideLabel label{display:none}
