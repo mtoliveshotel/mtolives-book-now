@@ -76,6 +76,21 @@
             cursor:not-allowed !important;
           }
 
+          /* Brand-colored selections */
+          .flatpickr-day.selected,
+          .flatpickr-day.startRange,
+          .flatpickr-day.endRange{
+            background: var(--accent, #808000);
+            border-color: var(--accent, #808000);
+            color: #fff;
+          }
+          .flatpickr-day.inRange{
+            background: var(--hover, rgba(74,144,226,.22)); /* uses your --hover var */
+            border-color: transparent;
+          }
+
+
+
         </style>
         <div class="bar ${labels === 'none' ? 'hideLabel' : ''}">
           <div class="group"><label>Check-in</label><input id="checkin" type="text" placeholder="Check-in" inputmode="none"></div>
