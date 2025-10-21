@@ -1,6 +1,6 @@
-/*! mtolives-book-now v0.4.3 | (c) 2025 Mount of Olives Hotel Ltd. | MIT */
+/*! mtolives-book-now v0.4.4 | (c) 2025 Mount of Olives Hotel Ltd. | MIT */
 (() => {
-  const WIDGET_VERSION = '0.4.3';
+  const WIDGET_VERSION = '0.4.4';
   console.info(`mtolives-book-now ${WIDGET_VERSION} loaded`);
 
   // ---------- helpers ----------
@@ -26,6 +26,7 @@
       .flatpickr-calendar{border:1px solid rgba(0,0,0,.08)!important;box-shadow:0 10px 30px rgba(0,0,0,.18)!important}
       .flatpickr-day.selected,.flatpickr-day.startRange,.flatpickr-day.endRange{background:#4a90e2;border-color:#4a90e2;color:#fff}
       .flatpickr-day.inRange{background:rgba(74,144,226,.16)}
+      .flatpickr-day.flatpickr-disabled{opacity:.55}
       .fp-intent-pill{font:600 12px/1 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#2b2b2b;
         background:#f4f6f8;border:1px solid #e5e7eb;border-radius:999px;padding:6px 10px;margin:8px 10px}
     `;
@@ -57,17 +58,16 @@
             font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
           }
           *,*::before,*::after{box-sizing:border-box}
-          .bar{display:flex;gap:12px;align-items:center} /* center vertically */
+          .bar{display:flex;gap:12px;align-items:center}
           :host([align="center"]) .bar{justify-content:center}
 
           .group{display:flex;flex-direction:column;gap:6px}
           label{font-weight:600;color:#2b2b2b}
-          .hideLabel label{display:none}  /* default: no duplicate labels */
+          .hideLabel label{display:none}
 
           input{
             width:var(--fieldW);padding:12px;border:1px solid #d9dde2;border-radius:var(--rounded);
-            outline:none;background:#fff;box-shadow:0 1px 0 rgba(0,0,0,.04) inset;
-            height:42px; /* consistent height = easier centering */
+            outline:none;background:#fff;box-shadow:0 1px 0 rgba(0,0,0,.04) inset;height:42px;
           }
           input:focus{border-color:#67b1ff;box-shadow:0 0 0 3px rgba(103,177,255,.22)}
 
@@ -118,37 +118,88 @@
       const align      = this.getAttribute('align') || 'center';
       const minNights  = Math.max(1, Number(this.getAttribute('min-nights') || '1'));
 
-      // Track which field opened (for the little "intent pill" only)
+      // Track which field opened (for re-anchoring logic + "intent pill")
       let openedBy = 'in';
       inputIn .addEventListener('mousedown', () => { openedBy = 'in';  }, {capture:true});
       inputOut.addEventListener('mousedown', () => { openedBy = 'out'; }, {capture:true});
 
       const fp = flatpickr(inputIn, {
         plugins: [ new rangePlugin({ input: inputOut }) ],
-        showMonths, disableMobile:true, static:false,
-        minDate:'today', dateFormat:displayFmt, allowInput:false,
+        showMonths,
+        disableMobile:true,
+        static:false,
+        minDate:'today',
+        dateFormat:displayFmt,
+        allowInput:false,
+        closeOnSelect:false,  // keep open until we explicitly close on valid range
 
-        // NOTE: we do *not* clear on open anymore — this was causing resets
         onOpen: (_sel,_str,inst) => {
           if (inst.selectedDates[0]) inst.jumpToDate(inst.selectedDates[0], true);
           this.intentPill(inst, openedBy === 'out' ? 'end' : 'start');
         },
 
         onChange: (dates,_s,inst) => {
-          if (dates.length === 1) {
-            // Let flatpickr show the day; we also mirror to the input for clarity
-            inputIn.value = inst.formatDate(dates[0], displayFmt);
-            return;
-          }
-          if (dates.length === 2) {
-            const [s,e] = dates;
-            const nights = Math.round((e - s) / 86400000);
-            if (nights < minNights) return; // too short, ignore
+          // We implement "smart re-anchor":
+          //  - If user started from Check-in and picked a date beyond the old end,
+          //    flatten's default collapses start=end and closes. We intercept and
+          //    re-anchor to a single start, keep open, and move focus to Check-out.
+          //  - If user started from Check-out and picked a date before the old start,
+          //    we re-anchor to a single end, keep open, and move focus to Check-in.
 
+          const setInputsFromDates = () => {
+            if (inst.selectedDates.length === 0) { inputIn.value=''; inputOut.value=''; return; }
+            if (inst.selectedDates.length === 1) {
+              inputIn.value = inst.formatDate(inst.selectedDates[0], displayFmt);
+              inputOut.value = '';
+              return;
+            }
+            const [s,e] = inst.selectedDates;
             inputIn.value  = inst.formatDate(s, displayFmt);
             inputOut.value = inst.formatDate(e, displayFmt);
+          };
 
-            // close on completed range
+          if (dates.length === 1) {
+            // Single anchor selected — mirror to inputs and keep open
+            setInputsFromDates();
+            return;
+          }
+
+          if (dates.length === 2) {
+            let [s,e] = dates;
+
+            // Case A: user opened from Check-in and clicked far in the future
+            if (openedBy === 'in' && e.getTime() === s.getTime()) {
+              // Re-anchor to start only
+              inst.setDate([s], true); // updates selectedDates to [s] and inputIn
+              inputOut.value = '';
+              setTimeout(() => { openedBy = 'out'; inputOut.focus(); inst.jumpToDate(s, true); }, 0);
+              return;
+            }
+
+            // Case B: user opened from Check-out and clicked before the start
+            if (openedBy === 'out' && e.getTime() <= s.getTime()) {
+              // Re-anchor to end only (treat clicked day as new end)
+              const end = e; // the clicked date
+              inst.clear(false);
+              inst.setDate([end], true); // flatpickr treats single date as "start"; we mirror to checkout
+              inputIn.value  = '';                       // clear start in UI
+              inputOut.value = inst.formatDate(end, displayFmt);
+              setTimeout(() => { openedBy = 'in'; inputIn.focus(); inst.jumpToDate(end, true); }, 0);
+              return;
+            }
+
+            // Normal range completion
+            const nights = Math.round((e - s) / 86400000);
+            if (nights < minNights) {
+              // Too short: keep open, re-anchor to the first date
+              inst.setDate([s], true);
+              inputOut.value = '';
+              setTimeout(() => { openedBy = 'out'; inputOut.focus(); }, 0);
+              return;
+            }
+
+            setInputsFromDates();
+            // Close after a valid range
             setTimeout(() => inst.close(), 0);
           }
         }
