@@ -1,286 +1,274 @@
-/*! mtolives-book-now v0.4.1 | (c) 2025 Mount of Olives Hotel Ltd. | MIT */
+/*! mtolives-book-now v0.4.2 | (c) 2025 Mount of Olives Hotel Ltd. | MIT */
 (() => {
-  const WIDGET_VERSION = '0.4.1';
+  const WIDGET_VERSION = '0.4.2';
   console.info(`mtolives-book-now ${WIDGET_VERSION} loaded`);
 
-  // ---------------- helpers ----------------
+  // ---------- tiny loader helpers ----------
   const once = (key, fn) => (once[key] ? undefined : (once[key] = fn()));
-  const loadScript = (src) =>
-    new Promise((res, rej) => {
-      const s = document.createElement('script');
-      s.src = src; s.defer = true;
-      s.onload = res; s.onerror = rej;
-      document.head.appendChild(s);
-    });
-  const loadCss = (href) => {
+  const loadJs = (src) => new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = src; s.defer = true;
+    s.onload = res; s.onerror = () => rej(new Error(`Script load failed: ${src}`));
+    document.head.appendChild(s);
+  });
+  const loadCss = (href) => new Promise((res, rej) => {
     const l = document.createElement('link');
     l.rel = 'stylesheet'; l.href = href;
+    l.onload = res; l.onerror = () => rej(new Error(`CSS load failed: ${href}`));
     document.head.appendChild(l);
-  };
-  const loadWithFallback = async (tryFirst, fallback, kind) => {
-    try {
-      if (kind === 'css') loadCss(tryFirst);
-      else await loadScript(tryFirst);
-    } catch {
-      if (kind === 'css') loadCss(fallback);
-      else await loadScript(fallback);
-    }
-  };
-  const fmt = (d) => {
-    // ISO date yyyy-mm-dd for URL handoff
-    const pad = (n) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  };
-
-  // Inject a tiny bit of global calendar polish (outside shadow)
-  once('global-calendar-css', () => {
-    const css = `
-      .flatpickr-calendar{border:1px solid rgba(0,0,0,.08)!important;box-shadow:0 10px 30px rgba(0,0,0,.18)!important}
-      .flatpickr-day.selected,.flatpickr-day.startRange,.flatpickr-day.endRange{background:#4a90e2;border-color:#4a90e2;color:#fff}
-      .flatpickr-day.inRange{background:rgba(74,144,226,.16)}
-      .fp-intent-pill{font:600 12px/1 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-        color:#2b2b2b;background:#f4f6f8;border:1px solid #e5e7eb;border-radius:999px;padding:6px 10px;margin:8px 10px}
-    `;
-    const style = document.createElement('style');
-    style.textContent = css; document.head.appendChild(style);
   });
+  const tryLoad = async (primary, fallback) => { try { await primary(); } catch { if (fallback) await fallback(); } };
 
-  // ---------------- component ----------------
+  // Compute base directory of THIS script robustly (works with ?v=...)
+  const thisScript = document.currentScript || [...document.scripts].find(s => /mtolives-book-now\.js/.test(s.src));
+  const SCRIPT_BASE = thisScript ? new URL('.', thisScript.src).href : './';
+  const FP_LOCAL_BASE = new URL('./vendor/flatpickr/', SCRIPT_BASE).href; // .../vendor/flatpickr/
+  const FP_CDN_ROOT   = 'https://cdn.jsdelivr.net/npm/flatpickr@4.6.13';
+  const FP_CDN_DIST   = `${FP_CDN_ROOT}/dist`;
+
+  // Ensure Flatpickr (local → CDN)
+  async function ensureFlatpickr() {
+    if (window.flatpickr && window.rangePlugin) return;
+
+    await once('fp-css', () =>
+      tryLoad(
+        () => loadCss(`${FP_LOCAL_BASE}flatpickr.min.css`),
+        () => loadCss(`${FP_CDN_DIST}/flatpickr.min.css`)
+      )
+    );
+    if (!window.flatpickr) {
+      await tryLoad(
+        () => loadJs(`${FP_LOCAL_BASE}flatpickr.min.js`),
+        () => loadJs(`${FP_CDN_DIST}/flatpickr.min.js`)
+      );
+    }
+    if (!window.rangePlugin) {
+      await tryLoad(
+        () => loadJs(`${FP_LOCAL_BASE}plugins/rangePlugin.js`),
+        () => loadJs(`${FP_CDN_DIST}/plugins/rangePlugin.js`)
+      );
+    }
+    if (!window.flatpickr || !window.rangePlugin) throw new Error('Flatpickr not available after load');
+  }
+
+  // ---------- Web Component ----------
   class MtOlivesBookNow extends HTMLElement {
     static get observedAttributes() {
-      return ['book-url','show-months','popup','display-format','locale','min-nights','max-nights','align'];
+      return ['book-url','display-format','show-months','locale','allow-same-day','min-nights','max-nights','popup'];
     }
 
     constructor() {
       super();
       this.attachShadow({ mode: 'open' });
-
-      const accent = '#808000';
-      const hover = '#4a90e2';
-      const rounded = this.getAttribute('rounded') || '10px';
-
       this.shadowRoot.innerHTML = `
         <style>
           :host{
-            --accent: ${accent};
-            --hover: ${hover};
-            --fieldW: 250px;
-            --rounded: ${rounded};
-            --density: 12px;
-            --shadow: 0 10px 28px rgba(0,0,0,.18);
-            font: 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+            --olive: #7a8000;
+            --hover: #4a90e2;
+            --text:  #1e1f23;
+            --muted: rgba(0,0,0,.56);
+            --bg:    #fff;
+            --ring:  rgba(0,0,0,.12);
+            --radius: 12px;
+            --gap: 12px;
+            --fieldW: 260px;
+            --fieldH: 48px;
+            --buttonOffset: 0px;
+            font: 14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+            color: var(--text);
           }
-          *,*::before,*::after{box-sizing:border-box}
-          .bar{display:flex;gap:12px;align-items:center;flex-wrap:nowrap}
-          :host([align="center"]) .bar{justify-content:center}
-          .group{display:flex;flex-direction:column;gap:6px}
-          label{font-weight:600;color:#2b2b2b}
-          input{
-            width:var(--fieldW);padding:var(--density) 12px;border:1px solid #d9dde2;border-radius:var(--rounded);
-            outline:none;box-shadow:0 1px 0 rgba(0,0,0,.04) inset;background:#fff;
-          }
-          input:focus{border-color:#67b1ff;box-shadow:0 0 0 3px rgba(103,177,255,.22)}
-          button{
-            padding:10px 18px;border-radius:999px;border:0;background:var(--accent);color:#000;
-            font-weight:700;letter-spacing:.02em;cursor:pointer;box-shadow:var(--shadow)
-          }
-          button:disabled{opacity:.5;cursor:not-allowed}
+          *,*::before,*::after{ box-sizing: border-box; }
+          .wrap{ background: var(--bg); border-radius: 16px; box-shadow: 0 8px 28px rgba(0,0,0,.10); padding: 16px 18px; width:max-content; }
+          .bar{ display:flex; align-items:center; gap:var(--gap); flex-wrap:nowrap; position:relative; }
+          .field{ width:var(--fieldW); height:var(--fieldH); border:1px solid var(--ring); border-radius:var(--radius); padding:10px 12px; display:flex; align-items:center; background:#fff; }
+          .field input{ border:none; outline:none; width:100%; font:inherit; color:var(--text); background:transparent; }
+          .hint{ position:absolute; left:0; bottom:-18px; font-size:12px; color:#5b6b7a; user-select:none; display:none; }
+          .btn{ transform:translateY(var(--buttonOffset)); height:var(--fieldH); padding:0 22px; border-radius:999px; background:var(--olive); color:#000; border:none; font-weight:600; letter-spacing:.2px; cursor:pointer; white-space:nowrap; }
+          .btn:hover{ background: var(--hover); color:#fff; }
+          input.is-active{ outline:2px solid #2bb6c1; outline-offset:2px; }
         </style>
-
-        <div class="bar">
-          <div class="group">
-            <label>Check-in</label>
-            <input id="checkin" type="text" placeholder="Check-in" inputmode="none" />
+        <div class="wrap">
+          <div class="bar">
+            <div class="field"><input id="in"  type="text" placeholder="Check-in"  inputmode="none" /></div>
+            <div class="field"><input id="out" type="text" placeholder="Check-out" inputmode="none" /></div>
+            <button class="btn" id="go">BOOK NOW</button>
+            <div class="hint" id="hint"></div>
           </div>
-          <div class="group">
-            <label>Check-out</label>
-            <input id="checkout" type="text" placeholder="Check-out" inputmode="none" />
-          </div>
-          <button id="book">BOOK NOW</button>
         </div>
       `;
     }
 
     connectedCallback() {
-      this.init();
+      this.api = this.readApi();
+      this.$in   = this.shadowRoot.getElementById('in');
+      this.$out  = this.shadowRoot.getElementById('out');
+      this.$go   = this.shadowRoot.getElementById('go');
+      this.$hint = this.shadowRoot.getElementById('hint');
+
+      ensureFlatpickr()
+        .then(() => this.initCalendar())
+        .catch(err => console.error(err));
+
+      this.$go.addEventListener('click', () => this.book());
     }
 
-    attributeChangedCallback() {}
+    attributeChangedCallback() { this.api = this.readApi(); }
 
-    async ensureFlatpickr() {
-      if (window.flatpickr) return;
-
-      // Choose local vs CDN; paths relative to the page (GitHub Pages /docs)
-      const LOCAL_BASE = './vendor/flatpickr';
-      const CDN_BASE = 'https://cdn.jsdelivr.net/npm/flatpickr@4.6.13';
-
-      // CSS first (with fallback), then JS and plugin
-      once('flatpickr-css', () =>
-        loadWithFallback(`${LOCAL_BASE}/flatpickr.min.css`, `${CDN_BASE}/dist/flatpickr.min.css`, 'css')
-      );
-      try {
-        await loadScript(`${LOCAL_BASE}/flatpickr.min.js`);
-      } catch {
-        await loadScript(`${CDN_BASE}/dist/flatpickr.min.js`);
-      }
-      try {
-        await loadScript(`${LOCAL_BASE}/plugins/rangePlugin.js`);
-      } catch {
-        await loadScript(`${CDN_BASE}/dist/plugins/rangePlugin.js`);
-      }
+    readApi() {
+      const A = (n, d=null) => this.getAttribute(n) ?? d;
+      const N = (n, d=null) => { const v = this.getAttribute(n); const x = v==null?d:Number(v); return Number.isFinite(x)?x:d; };
+      return {
+        bookUrl:       A('book-url', 'https://www.mtoliveshotel.com/book-now'),
+        displayFormat: A('display-format','d M Y'),
+        showMonths:    N('show-months', 2),
+        locale:        A('locale', null) || undefined,
+        allowSameDay:  (A('allow-same-day','false') === 'true'),
+        minNights:     N('min-nights', 0),
+        maxNights:     N('max-nights', 0),
+        popup:         A('popup','below')  // 'below' | 'above' | 'auto'
+      };
     }
 
-    async init() {
-      await this.ensureFlatpickr();
+    // ============= Improved calendar behavior =============
+    initCalendar() {
+      const { flatpickr, rangePlugin } = window;
+      const { displayFormat, showMonths, locale, popup, allowSameDay, minNights, maxNights } = this.api;
 
-      const root = this.shadowRoot;
-      const btn = root.getElementById('book');
-      const inputFrom = root.getElementById('checkin');
-      const inputTo = root.getElementById('checkout');
+      const inEl  = this.$in;
+      const outEl = this.$out;
+      const hint  = this.$hint;
 
-      // attrs
-      const showMonths = Number(this.getAttribute('show-months') || '2');
-      const displayFormat = this.getAttribute('display-format') || 'd M Y';
-      const popup = this.getAttribute('popup') || 'below'; // 'below'|'above'
-      const locale = (this.getAttribute('locale') || 'default');
-      const minNights = Number(this.getAttribute('min-nights') || '1');
-      const align = this.getAttribute('align') || 'center';
+      // Track which input opened the popup
+      let openedBy = null;
 
-      // For clarity & fixes:
-      // - We keep one flatpickr instance on the "from" input + rangePlugin(to)
-      // - We track which side the user is editing (intent = 'start'|'end')
-      // - Clicking "Check-in" clears the old end date; clicking "Check-out" keeps start.
-      let intent = 'start'; // current selection intent
-
-      // Build instance
-      const fp = window.flatpickr(inputFrom, {
-        altInput: false,
-        dateFormat: displayFormat,
-        allowInput: false,
-        clickOpens: true,
-        showMonths,
-        minDate: 'today',
-        static: false,
-        position: popup === 'above' ? 'above' : 'auto',
-        locale,
-        plugins: [ new rangePlugin({ input: inputTo }) ],
-        // --- hooks controlling the UX fixes ---
-        onOpen: (selDates, str, instance) => {
-          // Add/update intent banner
-          this.updateIntentPill(instance, intent);
-
-          // Anchor the calendar:
-          //  - picking an end? keep the start month in view
-          //  - picking a start? jump to start or today
-          const [start, end] = instance.selectedDates;
-          if (intent === 'end' && start) {
-            instance.jumpToDate(start);
-            instance.set('minDate', start);
-          } else {
-            instance.set('minDate', 'today');
-            instance.jumpToDate(start || new Date());
-          }
-        },
-        onChange: (selDates, str, instance) => {
-          // Enforce min nights when both chosen
-          if (selDates.length === 2) {
-            const [s, e] = selDates;
-            const nights = Math.ceil((e - s) / 86400000);
-            if (minNights > 1 && nights < minNights) {
-              // push end forward
-              const adj = new Date(s);
-              adj.setDate(adj.getDate() + Math.max(1, minNights));
-              instance.setDate([s, adj], true);
-              return;
-            }
-            // Close after selecting both sides
-            instance.close();
-          } else {
-            // Update intent pill while hovering/selecting
-            this.updateIntentPill(instance, selDates.length === 0 ? 'start' : 'end');
-          }
-        },
-        onReady: (dates, str, instance) => {
-          // Ensure the checkout cannot be typed earlier than start
-          inputTo.readOnly = true;
-          inputFrom.readOnly = true;
-        }
-      });
-
-      // Clicking inputs sets intent + resets as required
-      const clearEnd = () => {
-        // Keep only a start date if present; clear checkout field
-        const [s] = fp.selectedDates;
-        if (s) {
-          fp.setDate([s], true); // true = trigger change -> keeps UI consistent
-        } else {
-          fp.clear();
-        }
-        inputTo.value = '';
+      const setActiveField = (which) => {
+        inEl.classList.toggle('is-active',  which === 'in');
+        outEl.classList.toggle('is-active', which === 'out');
+        hint.style.display = 'block';
+        hint.textContent = which === 'out' ? 'Choose a new check-out date' : 'Choose a new check-in date';
+      };
+      const clearActive = () => {
+        inEl.classList.remove('is-active');
+        outEl.classList.remove('is-active');
+        hint.style.display = 'none';
       };
 
-      inputFrom.addEventListener('focus', () => {
-        intent = 'start';
-        // Reset the end date so a *new* range can be chosen
-        if (fp.selectedDates.length === 2) clearEnd();
-        fp.open(); // shows intent banner via onOpen
-      });
-      inputFrom.addEventListener('click', () => {
-        intent = 'start';
-        if (fp.selectedDates.length === 2) clearEnd();
-        fp.open();
+      const markOpenSource = (which) => () => { openedBy = which; };
+      ['pointerdown','mousedown','keydown','focus'].forEach(ev => {
+        inEl .addEventListener(ev, markOpenSource('in'));
+        outEl.addEventListener(ev, markOpenSource('out'));
       });
 
-      inputTo.addEventListener('focus', () => {
-        intent = 'end';
-        if (fp.selectedDates.length === 0) {
-          // No start yet? force user to pick start first
-          intent = 'start';
-          fp.open();
-        } else {
-          fp.open();
+      const fp = flatpickr(inEl, {
+        plugins: [ new rangePlugin({ input: outEl }) ],
+        mode: 'range',
+        dateFormat: displayFormat || 'd M Y',
+        altInput: false,
+        clickOpens: true,
+        closeOnSelect: false,                   // keep open until both dates chosen
+        minDate: 'today',
+        showMonths: +showMonths || 2,
+        position: popup || 'below',
+        static: true,                           // stable positioning
+        locale: locale || undefined,
+
+        onOpen: function(selected, _str, inst) {
+          // Visual cue: which input is active?
+          setActiveField(openedBy || 'in');
+
+          // Anchor months to the current check-in (or today) so October doesn't "disappear"
+          const anchor = parseDisplayDate(inEl.value, inst) || new Date();
+          inst.jumpToDate(anchor);
+
+          // If opened from CHECK-IN: start a fresh selection (clear range)
+          if ((openedBy || 'in') === 'in') {
+            inst.clear(false); // silent clear
+            // also ensure minDate is baseline (today) in case it was altered
+            inst.set('minDate', 'today');
+          } else {
+            // From CHECK-OUT: keep range; make sure you can't pick < check-in
+            const start = inst.selectedDates && inst.selectedDates[0];
+            if (start) inst.set('minDate', start);
+          }
+        },
+
+        onChange: function(selectedDates, _str, inst) {
+          const day = 86400000;
+          // One date: enforce that the next pick can't be before the first
+          if (selectedDates.length === 1) {
+            inst.set('minDate', selectedDates[0]);
+            return;
+          }
+          // Two dates: normalize and enforce rules, then close
+          if (selectedDates.length === 2) {
+            let [a, b] = selectedDates;
+            let start = a <= b ? a : b;
+            let end   = a <= b ? b : a;
+            let nights = Math.round((end - start) / day);
+
+            if (!allowSameDay && nights === 0) { end = new Date(start.getTime()+day); nights = 1; }
+            if (minNights && nights < minNights) { end = new Date(start.getTime()+minNights*day); nights = minNights; }
+            if (maxNights && nights > maxNights) { end = new Date(start.getTime()+maxNights*day); nights = maxNights; }
+
+            inst.setDate([start, end], true);
+            requestAnimationFrame(() => inst.close());
+          }
+        },
+
+        onClose: function(_sel, _str, inst) {
+          // restore global minDate after closing
+          inst.set('minDate', 'today');
+          clearActive();
+          openedBy = null;
         }
       });
-      inputTo.addEventListener('click', () => {
-        intent = 'end';
-        if (fp.selectedDates.length === 0) {
-          intent = 'start';
-          fp.open();
-        } else {
-          fp.open();
-        }
-      });
 
-      // BOOK NOW: build URL ?checkin=YYYY-MM-DD&checkout=YYYY-MM-DD
-      btn.addEventListener('click', () => {
-        const url = this.getAttribute('book-url') || '';
-        const [s, e] = fp.selectedDates;
-        if (!url || !s || !e) return;
+      // Open when focusing either field (desktop nicety)
+      inEl .addEventListener('focus', () => fp.open());
+      outEl.addEventListener('focus', () => fp.open());
 
-        const params = new URLSearchParams();
-        params.set('checkin', fmt(s));
-        params.set('checkout', fmt(e));
-
-        // Navigate same tab
-        location.href = `${url}?${params.toString()}`;
-      });
-
-      // Make host alignment reflect attribute (for demo styling)
-      this.setAttribute('align', align);
-    }
-
-    updateIntentPill(instance, intent) {
-      const c = instance.calendarContainer;
-      let pill = c.querySelector('.fp-intent-pill');
-      const text = intent === 'end' ? 'Choose check-out' : 'Choose check-in';
-      if (!pill) {
-        pill = document.createElement('div');
-        pill.className = 'fp-intent-pill';
-        c.insertBefore(pill, c.firstChild);
+      // helper to parse the visible text back into a Date using the current format
+      function parseDisplayDate(val, inst) {
+        if (!val) return null;
+        try { return inst.parseDate(val, inst.config.dateFormat); } catch { return null; }
       }
-      pill.textContent = text;
+
+      this.fp = fp;
+    }
+    // ============= /Improved calendar behavior =============
+
+    book() {
+      const { bookUrl, allowSameDay, minNights, maxNights } = this.api;
+      if (!this.fp) return;
+
+      const sel = this.fp.selectedDates || [];
+      if (sel.length < 2) { this.fp.open(); return; }
+
+      const day = 86400000;
+      let [start, end] = sel[0] <= sel[1] ? sel : [sel[1], sel[0]];
+      let nights = Math.round((end - start) / day);
+
+      if (!allowSameDay && nights === 0) { this.fp.open(); return; }
+      if (minNights && nights < minNights) { this.fp.open(); return; }
+      if (maxNights && nights > maxNights) { this.fp.open(); return; }
+
+      const toYMD = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      const params = new URLSearchParams({ checkin: toYMD(start), checkout: toYMD(end) });
+      window.location.href = `${bookUrl}?${params}`;
     }
   }
 
   customElements.define('mtolives-book-now', MtOlivesBookNow);
+
+  // Global calendar polish (outside shadow)
+  once('fp-global-css', () => {
+    const s = document.createElement('style');
+    s.textContent = `
+      .flatpickr-calendar{border:1px solid rgba(0,0,0,.08)!important; box-shadow:0 10px 30px rgba(0,0,0,.22)!important}
+      .flatpickr-day.selected,.flatpickr-day.startRange,.flatpickr-day.endRange{background:var(--fp-accent,#4a90e2);border-color:var(--fp-accent,#4a90e2);color:#fff}
+      .flatpickr-day.inRange{background:rgba(74,144,226,.16)}
+      .flatpickr-day.flatpickr-disabled{color:rgba(0,0,0,.38)!important}
+    `;
+    document.head.appendChild(s);
+  });
 })();
