@@ -171,18 +171,41 @@
           pill(inst, openedBy === 'out' ? 'end' : 'start');
         },
 
-        // Critical: reflow after the shadow <link id="fp-css"> is loaded so headers match grids
-        onReady: (_dates,_str,inst) => {
-          const link = this.shadowRoot.getElementById('fp-css');
-          const reflow = () => { try { inst.redraw && inst.redraw(); } catch{} };
-          if (link){
-            if (link.sheet) reflow();
-            else link.addEventListener('load', reflow, { once:true });
-          } else {
-            setTimeout(reflow, 0);
-          }
-        },
 
+
+        
+        
+        // Critical: reflow after the shadow <link id="fp-css"> is loaded so headers match grids
+onReady: (_dates, _str, inst) => {
+  const cal  = inst.calendarContainer;
+  const link = this.shadowRoot.getElementById('fp-css');
+
+  // Hide until CSS is definitely applied to avoid chevron flash & bad measurements
+  cal.style.visibility = 'hidden';
+
+  const showAndRedraw = () => {
+    try { inst.redraw && inst.redraw(); } catch {}
+    // extra safety passes for hard-reload races
+    requestAnimationFrame(() => { try { inst.redraw(); } catch {} cal.style.visibility = 'visible'; });
+    setTimeout(() => { try { inst.redraw(); } catch {} cal.style.visibility = 'visible'; }, 120);
+  };
+
+  if (link && !link.sheet) {
+    // CSS not parsed yet: wait for it, then redraw & show
+    link.addEventListener('load', showAndRedraw, { once: true });
+  } else {
+    // CSS already parsed (or no link found): still do staggered redraws
+    showAndRedraw();
+  }
+},
+
+
+
+
+
+        
+
+        
         onChange: (dates,_str,inst) => {
           if (mutating) return;
 
