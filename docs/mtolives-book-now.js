@@ -20,6 +20,22 @@
     style.textContent = `
       .flatpickr-calendar{border:1px solid rgba(0,0,0,.08)!important;box-shadow:0 10px 30px rgba(0,0,0,.18)!important}
 
+      /* Hard-disable Flatpickr pointer pseudos (prevents giant chevron bug) */
+      .flatpickr-calendar:before,
+      .flatpickr-calendar:after{
+        content:'' !important;
+        border:0 !important;
+        display:none !important;
+      }
+      .flatpickr-calendar.arrowTop:before,
+      .flatpickr-calendar.arrowTop:after,
+      .flatpickr-calendar.arrowBottom:before,
+      .flatpickr-calendar.arrowBottom:after{
+        content:'' !important;
+        border:0 !important;
+        display:none !important;
+      }
+
       /* Hide pointer arrows/chevrons to prevent giant artifacts */
       .flatpickr-calendar.arrowTop:before,
       .flatpickr-calendar.arrowTop:after,
