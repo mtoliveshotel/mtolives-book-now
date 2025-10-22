@@ -47,7 +47,9 @@
         <style>
           :host{
             --accent:${accent};
-            --hover: rgba(128,128,0,.18);
+
+            --hover: rgba(128,128,0,.24);
+
             --fieldW: 250px;
             --rounded:${rounded};
             --shadow: 0 10px 28px rgba(0,0,0,.18);
