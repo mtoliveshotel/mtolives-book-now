@@ -185,6 +185,34 @@
         x.textContent = text;
       };
 
+      
+// --- pointer that follows the active input ---
+const ensurePin = (inst) => {
+  const c = inst.calendarContainer;
+  if (!c.querySelector('.mto-pin')) {
+    const pin = document.createElement('div');
+    pin.className = 'mto-pin';
+    c.appendChild(pin);
+  }
+};
+const positionPin = (inst, side) => {
+  const c = inst.calendarContainer;
+  const pin = c.querySelector('.mto-pin');
+  if (!pin) return;
+  // choose target input based on focus/openedBy or explicit side
+  const target = (side === 'end' || openedBy === 'out' || document.activeElement === inputOut)
+    ? inputOut : inputIn;
+  const cr = c.getBoundingClientRect();
+  const tr = target.getBoundingClientRect();
+  const left = tr.left + tr.width / 2 - cr.left;
+  pin.style.left = `${left}px`;
+};
+
+
+
+
+
+      
       const fp = flatpickr(inputIn, {
         plugins: [ new rangePlugin({ input: inputOut }) ],
         showMonths,
