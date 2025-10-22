@@ -166,6 +166,7 @@
         showMonths,
         disableMobile: true,
         static: false,
+        positionElement: this.shadowRoot.querySelector('.bar'),
         minDate: 'today',
         dateFormat: displayFmt,
         allowInput: false,
