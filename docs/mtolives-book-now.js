@@ -96,6 +96,26 @@
           .flatpickr-calendar.arrowTop:after,
           .flatpickr-calendar.arrowBottom:before,
           .flatpickr-calendar.arrowBottom:after{ display:none!important; border:0!important; content:''!important; }
+
+
+/* Tiny pointer triangle that will track the focused field */
+.mto-pin{
+  position: absolute;
+  top: -8px;                  /* sits just above the calendar */
+  left: 0;                    /* JS will set the exact left in px */
+  transform: translateX(-50%);
+  width: 0; height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 8px solid #e5e7eb;  /* match calendar border color */
+  pointer-events: none;
+  z-index: 3;
+  filter: drop-shadow(0 1px 0 rgba(0,0,0,.05));
+}
+
+
+
+        
         </style>
         <div class=\"bar ${labels === 'none' ? 'hideLabel' : ''}\"> 
           <div class=\"group\"><label>Check-in</label><input id=\"checkin\" type=\"text\" placeholder=\"Check-in\" inputmode=\"none\"></div>
