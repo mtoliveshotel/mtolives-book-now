@@ -208,8 +208,9 @@
       const fp = flatpickr(inputIn, {
         plugins: [ new rangePlugin({ input: inputOut }) ],
         showMonths,
+        appendTo: this.shadowRoot.querySelector('.bar'),
         disableMobile: true,
-        static: true,
+        static: false,
         minDate: 'today',
         dateFormat: displayFmt,
         allowInput: false,
