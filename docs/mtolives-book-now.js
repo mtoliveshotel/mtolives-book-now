@@ -20,6 +20,14 @@
     style.textContent = `
       .flatpickr-calendar{border:1px solid rgba(0,0,0,.08)!important;box-shadow:0 10px 30px rgba(0,0,0,.18)!important}
 
+      /* Hide pointer arrows/chevrons to prevent giant artifacts */
+      .flatpickr-calendar.arrowTop:before,
+      .flatpickr-calendar.arrowTop:after,
+      .flatpickr-calendar.arrowBottom:before,
+      .flatpickr-calendar.arrowBottom:after{
+      display:none !important;
+      }
+
       // .flatpickr-day.selected,.flatpickr-day.startRange,.flatpickr-day.endRange{background:#4a90e2;border-color:#4a90e2;color:#fff}
       // .flatpickr-day.inRange{background:rgba(74,144,226,.16)}
       // .flatpickr-day.flatpickr-disabled{opacity:.55}
