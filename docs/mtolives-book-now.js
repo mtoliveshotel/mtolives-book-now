@@ -74,7 +74,7 @@
       const labels  = (this.getAttribute('labels') || 'none').toLowerCase(); // 'none' | 'show'
 
       this.shadowRoot.innerHTML = `
-        <link rel="stylesheet" href="./vendor/flatpickr/flatpickr.min.css">
+        <link id="fp-css" rel="stylesheet" href="./vendor/flatpickr/flatpickr.min.css">
         <style>
           :host{
             --accent:${accent}; --fieldW:250px; --rounded:${rounded};
