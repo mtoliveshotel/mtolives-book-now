@@ -124,6 +124,25 @@
 
 
 
+/* Kill Flatpickr pointer chevrons when calendar is rendered inside Shadow DOM */
+.flatpickr-calendar:before,
+.flatpickr-calendar:after,
+.flatpickr-calendar.arrowTop:before,
+.flatpickr-calendar.arrowTop:after,
+.flatpickr-calendar.arrowBottom:before,
+.flatpickr-calendar.arrowBottom:after{
+  content:'' !important;
+  border:0 !important;
+  display:none !important;
+}
+
+
+
+
+
+
+
+
         </style>
         <div class="bar ${labels === 'none' ? 'hideLabel' : ''}">
           <div class="group"><label>Check-in</label><input id="checkin" type="text" placeholder="Check-in" inputmode="none"></div>
