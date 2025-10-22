@@ -236,6 +236,30 @@
           pill(inst, openedBy === 'out' ? 'end' : 'start');
         },
 
+
+
+
+        
+onReady: (_dates, _str, inst) => {
+  const link = this.shadowRoot.getElementById('fp-css');
+  const reflow = () => {
+    try { inst.redraw && inst.redraw(); } catch {}
+    try { inst.changeMonth(0); } catch {}
+  };
+  if (link) {
+    // if CSS already parsed, reflow now; otherwise wait for load
+    if (link.sheet) reflow();
+    else link.addEventListener('load', reflow, { once: true });
+  } else {
+    // fallback: small async reflow
+    setTimeout(reflow, 0);
+  }
+},
+
+        
+        
+        
+        
         onChange: (dates,_str,inst) => {
           if (mutating) return; // prevent loops
 
