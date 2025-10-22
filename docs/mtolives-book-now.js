@@ -165,7 +165,7 @@
         plugins: [ new rangePlugin({ input: inputOut }) ],
         showMonths,
         disableMobile: true,
-        static: true,
+        static: false,
         minDate: 'today',
         dateFormat: displayFmt,
         allowInput: false,
