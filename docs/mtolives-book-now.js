@@ -227,6 +227,10 @@ const positionPin = (inst, side) => {
         onOpen: (_d,_s,inst) => {
           if (inst.selectedDates[0]) inst.jumpToDate(inst.selectedDates[0], true);
           pill(inst, openedBy === 'out' ? 'end' : 'start');
+
+          ensurePin(inst);
+          positionPin(inst, openedBy === 'out' ? 'end' : 'start');
+
         },
 
 
