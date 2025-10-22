@@ -169,7 +169,7 @@
         plugins: [ new rangePlugin({ input: inputOut }) ],
         showMonths,
         appendTo: this.shadowRoot.querySelector('.bar'), // render inside shadow
-        static: false,
+        static: true,
         disableMobile: true,
         minDate: 'today',
         dateFormat: displayFmt,
