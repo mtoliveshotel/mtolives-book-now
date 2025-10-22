@@ -120,6 +120,16 @@
     async init(){
       await this.ensureFlatpickr();
 
+// Wait for the Shadow-DOM flatpickr CSS to be parsed before creating the picker.
+// This prevents chevron flash and bad first-paint measurements on hard reload.
+{
+  const link = this.shadowRoot.getElementById('fp-css');
+  if (link && !link.sheet) {
+    await new Promise(resolve => link.addEventListener('load', resolve, { once: true }));
+  }
+}
+
+
       const r        = this.shadowRoot;
       const inputIn  = r.getElementById('checkin');
       const inputOut = r.getElementById('checkout');
