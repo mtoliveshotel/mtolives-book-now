@@ -137,18 +137,21 @@
   display:none !important;
 }
 
+
+
+
 /* Stabilize Flatpickr layout inside Shadow DOM */
 /* Stabilize Flatpickr layout inside Shadow DOM */
-.flatpickr-calendar,
-.flatpickr-calendar *,
-.flatpickr-calendar *::before,
-.flatpickr-calendar *::after{
-  box-sizing: border-box !important; /* align headers with day grid */
-}
+/* .flatpickr-calendar,
+/* .flatpickr-calendar *,
+/* .flatpickr-calendar *::before,
+/* .flatpickr-calendar *::after{
+/*   box-sizing: border-box !important; /* align headers with day grid */
+/* }
 
 /* Let Flatpickr use its defaults for layout */
-.flatpickr-calendar .flatpickr-days{ display:block; }
-.flatpickr-calendar .dayContainer{ display:inline-block; }
+/* .flatpickr-calendar .flatpickr-days{ display:block; }
+/* .flatpickr-calendar .dayContainer{ display:inline-block; }
 
 
 
