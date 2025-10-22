@@ -137,6 +137,16 @@
   display:none !important;
 }
 
+/* Stabilize Flatpickr layout inside Shadow DOM */
+.flatpickr-calendar,
+.flatpickr-calendar *,
+.flatpickr-calendar *::before,
+.flatpickr-calendar *::after{
+  box-sizing: content-box !important; /* undo global border-box for calendar internals */
+}
+
+.flatpickr-calendar .flatpickr-days{ display:block !important; }
+.flatpickr-calendar .dayContainer{ display:inline-block !important; } /* ensure exactly N=showMonths columns */
 
 
 
