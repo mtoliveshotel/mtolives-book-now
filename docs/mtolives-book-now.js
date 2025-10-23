@@ -214,7 +214,15 @@
 
 
 
-    connectedCallback(){ this.init(); }
+    connectedCallback(){ this.#applyLabels(); this.init(); }
+    
+    attributeChangedCallback(name, _old, _val){
+      if (name === 'labels' || name === 'label-checkin' || name === 'label-checkout') {
+        this.#applyLabels();
+      }
+    }
+
+    
 
     async ensureFlatpickr(){
       if (window.flatpickr) return;
