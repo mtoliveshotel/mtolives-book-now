@@ -141,6 +141,11 @@
 }
 
 
+/* Center the BOOK NOW button inside the bar */
+#book{
+  margin-inline: auto;   /* centers within the flex row */
+  align-self: center;    /* vertical centering in the row */
+}
 
 
         
