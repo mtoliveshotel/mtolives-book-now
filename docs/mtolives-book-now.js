@@ -319,7 +319,11 @@ const observeRange = (inst) => {
 
           ensurePin(inst);
           positionPin(inst, openedBy === 'out' ? 'end' : 'start');
+          observeRange(inst);
 
+
+
+          
         },
 
 
