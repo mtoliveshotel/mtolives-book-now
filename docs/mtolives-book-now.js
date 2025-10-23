@@ -173,6 +173,27 @@
 }
 
 
+/* Stronger, higher-specificity override for disabled / out-of-month days */
+.flatpickr-calendar .flatpickr-day.disabled,
+.flatpickr-calendar .flatpickr-day.notAllowed,
+.flatpickr-calendar .flatpickr-day.prevMonthDay,
+.flatpickr-calendar .flatpickr-day.nextMonthDay{
+  color: #4a4a4a !important;
+  background: rgba(0,0,0,.16) !important;   /* noticeably darker fill */
+  opacity: 1 !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+.flatpickr-calendar .flatpickr-day.disabled:hover,
+.flatpickr-calendar .flatpickr-day.notAllowed:hover,
+.flatpickr-calendar .flatpickr-day.prevMonthDay:hover,
+.flatpickr-calendar .flatpickr-day.nextMonthDay:hover{
+  background: rgba(0,0,0,.16) !important;
+  box-shadow: none !important;
+}
+.flatpickr-calendar .flatpickr-day.today.disabled{
+  border-color: transparent !important;
+}
 
 
 
