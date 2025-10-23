@@ -128,6 +128,23 @@
   color: #111 !important; /* keep numerals readable */
 }
 
+/* Hard override: make in-range use olive (no blue, no glow) */
+.flatpickr-calendar.rangeMode .flatpickr-days .dayContainer .flatpickr-day.inRange,
+.flatpickr-calendar.rangeMode .flatpickr-days .dayContainer .flatpickr-day.inRange:hover,
+.flatpickr-calendar.rangeMode .flatpickr-days .dayContainer .flatpickr-day.inRange:focus{
+  background: var(--hover, rgba(128,128,0,.24)) !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  color: #111 !important;
+}
+
+
+
+
+
+
+
 
         
         </style>
