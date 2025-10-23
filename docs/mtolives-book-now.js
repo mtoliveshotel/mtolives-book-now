@@ -30,9 +30,10 @@
 
   class MtOlivesBookNow extends HTMLElement {
     static get observedAttributes() {
-      return ['book-url','show-months','display-format','min-nights','align','labels','accent','rounded'];
+      return ['book-url','show-months','display-format','min-nights','align','labels','accent','rounded','label-checkin','label-checkout'];
     }
 
+    
     constructor(){
       super();
       this.attachShadow({ mode: 'open' });
