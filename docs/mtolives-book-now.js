@@ -149,69 +149,28 @@
 
 
 
-/* Darken disabled / out-of-month days (stronger contrast) */
-.flatpickr-day.disabled,
-.flatpickr-day.notAllowed,
-.flatpickr-day.prevMonthDay,
-.flatpickr-day.nextMonthDay{
-  color: #666 !important;
-  background: rgba(0,0,0,.07) !important;  /* subtle grey fill */
-  opacity: 1 !important;                    /* don’t fade the whole cell */
-  border-color: transparent !important;
-  box-shadow: none !important;
-  cursor: not-allowed;
-}
-.flatpickr-day.disabled:hover,
-.flatpickr-day.notAllowed:hover,
-.flatpickr-day.prevMonthDay:hover,
-.flatpickr-day.nextMonthDay:hover{
-  background: rgba(0,0,0,.07) !important;  /* keep the same on hover */
-  box-shadow: none !important;
-}
-.flatpickr-day.disabled.today{
-  border-color: transparent !important;     /* hide today ring if disabled */
-}
 
 
-/* Stronger, higher-specificity override for disabled / out-of-month days */
-.flatpickr-calendar .flatpickr-day.disabled,
-.flatpickr-calendar .flatpickr-day.notAllowed,
-.flatpickr-calendar .flatpickr-day.prevMonthDay,
-.flatpickr-calendar .flatpickr-day.nextMonthDay{
-  color: #4a4a4a !important;
-  background: rgba(0,0,0,.16) !important;   /* noticeably darker fill */
-  opacity: 1 !important;
-  border-color: transparent !important;
-  box-shadow: none !important;
-}
-.flatpickr-calendar .flatpickr-day.disabled:hover,
-.flatpickr-calendar .flatpickr-day.notAllowed:hover,
-.flatpickr-calendar .flatpickr-day.prevMonthDay:hover,
-.flatpickr-calendar .flatpickr-day.nextMonthDay:hover{
-  background: rgba(0,0,0,.16) !important;
-  box-shadow: none !important;
-}
-.flatpickr-calendar .flatpickr-day.today.disabled{
-  border-color: transparent !important;
-}
 
 
-/* Text-only styling for disabled / out-of-month days (no background fill) */
+
+
+/* Disabled + out-of-month: slightly darker numerals (no pill fill) */
 .flatpickr-calendar .flatpickr-day[aria-disabled="true"],
 .flatpickr-calendar .flatpickr-day.flatpickr-disabled,
 .flatpickr-calendar .flatpickr-day.prevMonthDay,
-.flatpickr-calendar .flatpickr-day.nextMonthDay{
-  color: #666 !important;                 /* darker numerals */
-  background: transparent !important;     /* no pill fill */
+.flatpickr-calendar .flatpickr-day.nextMonthDay {
+  color: #8a8a8a !important;        /* mid grey: darker than default, lighter than active */
+  background: transparent !important;
   border-color: transparent !important;
   box-shadow: none !important;
-  opacity: 1 !important;                  /* keep text crisp */
+  opacity: 1 !important;
 }
 .flatpickr-calendar .flatpickr-day[aria-disabled="true"]:hover,
 .flatpickr-calendar .flatpickr-day.flatpickr-disabled:hover,
 .flatpickr-calendar .flatpickr-day.prevMonthDay:hover,
-.flatpickr-calendar .flatpickr-day.nextMonthDay:hover{
-  color: #666 !important;
+.flatpickr-calendar .flatpickr-day.nextMonthDay:hover {
+  color: #8a8a8a !important;
   background: transparent !important;
   box-shadow: none !important;
 }
