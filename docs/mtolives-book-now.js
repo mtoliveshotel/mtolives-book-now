@@ -196,14 +196,24 @@
 }
 
 
-/* TEST: make all disabled/out-of-month days bright red so we can verify override */
+/* Text-only styling for disabled / out-of-month days (no background fill) */
 .flatpickr-calendar .flatpickr-day[aria-disabled="true"],
 .flatpickr-calendar .flatpickr-day.flatpickr-disabled,
-.flatpickr-calendar .flatpickr-day.disabled,
 .flatpickr-calendar .flatpickr-day.prevMonthDay,
 .flatpickr-calendar .flatpickr-day.nextMonthDay{
-  color: #fff !important;
-  background: #d00 !important;
+  color: #666 !important;                 /* darker numerals */
+  background: transparent !important;     /* no pill fill */
+  border-color: transparent !important;
+  box-shadow: none !important;
+  opacity: 1 !important;                  /* keep text crisp */
+}
+.flatpickr-calendar .flatpickr-day[aria-disabled="true"]:hover,
+.flatpickr-calendar .flatpickr-day.flatpickr-disabled:hover,
+.flatpickr-calendar .flatpickr-day.prevMonthDay:hover,
+.flatpickr-calendar .flatpickr-day.nextMonthDay:hover{
+  color: #666 !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
 
