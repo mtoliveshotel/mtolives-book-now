@@ -45,6 +45,7 @@
       this.shadowRoot.innerHTML = `
         <!-- Ensure Flatpickr CSS is available *inside* the shadow root -->
         <link id=\"fp-css\" rel=\"stylesheet\" href=\"./vendor/flatpickr/flatpickr.min.css\"> 
+
         <style>
           :host{
             --accent:${accent};
@@ -101,82 +102,74 @@
           .flatpickr-calendar.arrowBottom:after{ display:none!important; border:0!important; content:''!important; }
 
 
-/* Tiny pointer triangle that will track the focused field */
-.mto-pin{
-  position: absolute;
-  top: -8px;                  /* sits just above the calendar */
-  left: 0;                    /* JS will set the exact left in px */
-  transform: translateX(-50%);
-  width: 0; height: 0;
-  border-left: 8px solid transparent;
-  border-right: 8px solid transparent;
-  border-bottom: 8px solid #e5e7eb;  /* match calendar border color */
-  pointer-events: none;
-  z-index: 3;
-  filter: drop-shadow(0 1px 0 rgba(0,0,0,.05));
-}
+          /* Tiny pointer triangle that will track the focused field */
+          .mto-pin{
+            position: absolute;
+            top: -8px;                  /* sits just above the calendar */
+            left: 0;                    /* JS will set the exact left in px */
+            transform: translateX(-50%);
+            width: 0; height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-bottom: 8px solid #e5e7eb;  /* match calendar border color */
+            pointer-events: none;
+            z-index: 3;
+            filter: drop-shadow(0 1px 0 rgba(0,0,0,.05));
+          }
 
 
 
 
-/* Force brand olive for in-range (override any theme defaults) */
-.flatpickr-day.inRange,
-.flatpickr-day.inRange:hover{
-  background: var(--hover, rgba(128,128,0,.24)) !important;
-  border-color: transparent !important;
-  color: #111 !important; /* keep numerals readable */
-}
+          /* Force brand olive for in-range (override any theme defaults) */
+          .flatpickr-day.inRange,
+          .flatpickr-day.inRange:hover{
+            background: var(--hover, rgba(128,128,0,.24)) !important;
+            border-color: transparent !important;
+            color: #111 !important; /* keep numerals readable */
+          }
 
 
 
 
-/* Hard override: make in-range use olive (no blue, no glow) — works with rangePlugin */
-.flatpickr-calendar .flatpickr-days .dayContainer .flatpickr-day.inRange,
-.flatpickr-calendar .flatpickr-days .dayContainer .flatpickr-day.inRange:hover,
-.flatpickr-calendar .flatpickr-days .dayContainer .flatpickr-day.inRange:focus{
-  background: var(--hover, rgba(128,128,0,.24)) !important;
-  background-image: none !important;
-  border-color: transparent !important;
-  box-shadow: none !important;
-  color: #111 !important;
-}
+          /* Hard override: make in-range use olive (no blue, no glow) — works with rangePlugin */
+          .flatpickr-calendar .flatpickr-days .dayContainer .flatpickr-day.inRange,
+          .flatpickr-calendar .flatpickr-days .dayContainer .flatpickr-day.inRange:hover,
+          .flatpickr-calendar .flatpickr-days .dayContainer .flatpickr-day.inRange:focus{
+            background: var(--hover, rgba(128,128,0,.24)) !important;
+            background-image: none !important;
+            border-color: transparent !important;
+            box-shadow: none !important;
+            color: #111 !important;
+          }
 
 
-/* Center the BOOK NOW button inside the bar */
-#book{
-  margin-inline: auto;   /* centers within the flex row */
-  align-self: center;    /* vertical centering in the row */
-}
-
-
-
+          /* Center the BOOK NOW button inside the bar */
+          #book{
+            margin-inline: auto;   /* centers within the flex row */
+            align-self: center;    /* vertical centering in the row */
+          }
 
 
 
-
-
-
-/* Disabled + out-of-month: slightly darker numerals (no pill fill) */
-.flatpickr-calendar .flatpickr-day[aria-disabled="true"],
-.flatpickr-calendar .flatpickr-day.flatpickr-disabled,
-.flatpickr-calendar .flatpickr-day.prevMonthDay,
-.flatpickr-calendar .flatpickr-day.nextMonthDay {
-  color: #c0c0c0 !important;        /* mid grey: darker than default, lighter than active */
-  background: transparent !important;
-  border-color: transparent !important;
-  box-shadow: none !important;
-  opacity: 1 !important;
-}
-.flatpickr-calendar .flatpickr-day[aria-disabled="true"]:hover,
-.flatpickr-calendar .flatpickr-day.flatpickr-disabled:hover,
-.flatpickr-calendar .flatpickr-day.prevMonthDay:hover,
-.flatpickr-calendar .flatpickr-day.nextMonthDay:hover {
-  color: #c0c0c0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-}
-
-
+          /* Disabled + out-of-month: slightly darker numerals (no pill fill) */
+          .flatpickr-calendar .flatpickr-day[aria-disabled="true"],
+          .flatpickr-calendar .flatpickr-day.flatpickr-disabled,
+          .flatpickr-calendar .flatpickr-day.prevMonthDay,
+          .flatpickr-calendar .flatpickr-day.nextMonthDay {
+            color: #c0c0c0 !important;        /* mid grey: darker than default, lighter than active */
+            background: transparent !important;
+            border-color: transparent !important;
+            box-shadow: none !important;
+            opacity: 1 !important;
+          }
+          .flatpickr-calendar .flatpickr-day[aria-disabled="true"]:hover,
+          .flatpickr-calendar .flatpickr-day.flatpickr-disabled:hover,
+          .flatpickr-calendar .flatpickr-day.prevMonthDay:hover,
+          .flatpickr-calendar .flatpickr-day.nextMonthDay:hover {
+            color: #c0c0c0 !important;
+            background: transparent !important;
+            box-shadow: none !important;
+          }
 
         
         </style>
@@ -187,6 +180,39 @@
         </div>
       `;
     }
+
+
+    // Apply custom labels + visibility toggle
+    #applyLabels(){
+      const r = this.shadowRoot;
+      const [labIn, labOut] = r.querySelectorAll('.group > label');
+      const inputIn  = r.getElementById('checkin');
+      const inputOut = r.getElementById('checkout');
+    
+      const tIn  = this.getAttribute('label-checkin')  || 'Check-in';
+      const tOut = this.getAttribute('label-checkout') || 'Check-out';
+      if (labIn)  labIn.textContent  = tIn;
+      if (labOut) labOut.textContent = tOut;
+    
+      const hide = (this.getAttribute('labels') || '').toLowerCase();
+      const wrap = r.querySelector('.bar');
+      const shouldHide = hide === 'hidden' || hide === 'none' || hide === 'false';
+      if (wrap) wrap.classList.toggle('hideLabel', shouldHide);
+    
+      // When labels are hidden, mirror text into placeholders for clarity
+      if (inputIn && inputOut) {
+        if (shouldHide) {
+          inputIn.placeholder  = tIn;
+          inputOut.placeholder = tOut;
+        } else {
+          // keep placeholders minimal when labels show
+          inputIn.placeholder  = 'Check-in';
+          inputOut.placeholder = 'Check-out';
+        }
+      }
+    }
+
+
 
     connectedCallback(){ this.init(); }
 
