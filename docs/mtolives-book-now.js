@@ -160,7 +160,7 @@
 .flatpickr-calendar .flatpickr-day.flatpickr-disabled,
 .flatpickr-calendar .flatpickr-day.prevMonthDay,
 .flatpickr-calendar .flatpickr-day.nextMonthDay {
-  color: #8a8a8a !important;        /* mid grey: darker than default, lighter than active */
+  color: #9a9a9a !important;        /* mid grey: darker than default, lighter than active */
   background: transparent !important;
   border-color: transparent !important;
   box-shadow: none !important;
@@ -170,7 +170,7 @@
 .flatpickr-calendar .flatpickr-day.flatpickr-disabled:hover,
 .flatpickr-calendar .flatpickr-day.prevMonthDay:hover,
 .flatpickr-calendar .flatpickr-day.nextMonthDay:hover {
-  color: #8a8a8a !important;
+  color: #9a9a9a !important;
   background: transparent !important;
   box-shadow: none !important;
 }
