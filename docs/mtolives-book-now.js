@@ -149,23 +149,27 @@
 
 
 
-/* Darken disabled / out-of-month days */
+/* Darken disabled / out-of-month days (stronger contrast) */
 .flatpickr-day.disabled,
 .flatpickr-day.notAllowed,
 .flatpickr-day.prevMonthDay,
 .flatpickr-day.nextMonthDay{
-  color: #8b8b8b !important;
-  opacity: .65;
-  background: transparent !important;
+  color: #666 !important;
+  background: rgba(0,0,0,.07) !important;  /* subtle grey fill */
+  opacity: 1 !important;                    /* don’t fade the whole cell */
   border-color: transparent !important;
+  box-shadow: none !important;
   cursor: not-allowed;
 }
 .flatpickr-day.disabled:hover,
 .flatpickr-day.notAllowed:hover,
 .flatpickr-day.prevMonthDay:hover,
 .flatpickr-day.nextMonthDay:hover{
-  background: transparent !important;
+  background: rgba(0,0,0,.07) !important;  /* keep the same on hover */
   box-shadow: none !important;
+}
+.flatpickr-day.disabled.today{
+  border-color: transparent !important;     /* hide today ring if disabled */
 }
 
 
