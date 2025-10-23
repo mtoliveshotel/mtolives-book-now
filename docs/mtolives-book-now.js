@@ -196,6 +196,15 @@
 }
 
 
+/* TEST: make all disabled/out-of-month days bright red so we can verify override */
+.flatpickr-calendar .flatpickr-day[aria-disabled="true"],
+.flatpickr-calendar .flatpickr-day.flatpickr-disabled,
+.flatpickr-calendar .flatpickr-day.disabled,
+.flatpickr-calendar .flatpickr-day.prevMonthDay,
+.flatpickr-calendar .flatpickr-day.nextMonthDay{
+  color: #fff !important;
+  background: #d00 !important;
+}
 
 
 
