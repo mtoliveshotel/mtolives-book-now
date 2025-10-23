@@ -117,6 +117,18 @@
 
 
 
+
+
+
+/* Force brand olive for in-range (override any theme defaults) */
+.flatpickr-day.inRange,
+.flatpickr-day.inRange:hover{
+  background: var(--hover, rgba(128,128,0,.24)) !important;
+  border-color: transparent !important;
+  color: #111 !important; /* keep numerals readable */
+}
+
+
         
         </style>
         <div class=\"bar ${labels === 'none' ? 'hideLabel' : ''}\"> 
