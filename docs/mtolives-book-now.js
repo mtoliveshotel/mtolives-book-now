@@ -118,8 +118,6 @@
 
 
 
-
-
 /* Force brand olive for in-range (override any theme defaults) */
 .flatpickr-day.inRange,
 .flatpickr-day.inRange:hover{
@@ -128,20 +126,19 @@
   color: #111 !important; /* keep numerals readable */
 }
 
-/* Hard override: make in-range use olive (no blue, no glow) */
-.flatpickr-calendar.rangeMode .flatpickr-days .dayContainer .flatpickr-day.inRange,
-.flatpickr-calendar.rangeMode .flatpickr-days .dayContainer .flatpickr-day.inRange:hover,
-.flatpickr-calendar.rangeMode .flatpickr-days .dayContainer .flatpickr-day.inRange:focus{
+
+
+
+/* Hard override: make in-range use olive (no blue, no glow) — works with rangePlugin */
+.flatpickr-calendar .flatpickr-days .dayContainer .flatpickr-day.inRange,
+.flatpickr-calendar .flatpickr-days .dayContainer .flatpickr-day.inRange:hover,
+.flatpickr-calendar .flatpickr-days .dayContainer .flatpickr-day.inRange:focus{
   background: var(--hover, rgba(128,128,0,.24)) !important;
   background-image: none !important;
   border-color: transparent !important;
   box-shadow: none !important;
   color: #111 !important;
 }
-
-
-
-
 
 
 
