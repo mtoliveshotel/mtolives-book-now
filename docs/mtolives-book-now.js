@@ -241,10 +241,12 @@ const positionPin = (inst, side) => {
 const paintInRange = (inst) => {
   const cells = inst.calendarContainer.querySelectorAll('.flatpickr-day.inRange');
   cells.forEach(el => {
-    el.style.background = 'rgba(128,128,0,.24)';
-    el.style.borderColor = 'transparent';
-    el.style.boxShadow = 'none';
-    el.style.color = '#111';
+    el.style.setProperty('background', 'rgba(128,128,0,.24)', 'important');
+    el.style.setProperty('background-image', 'none', 'important');
+    el.style.setProperty('border-color', 'transparent', 'important');
+    el.style.setProperty('box-shadow', 'none', 'important');
+    el.style.setProperty('-webkit-box-shadow', 'none', 'important');
+    el.style.setProperty('color', '#111', 'important');
   });
 };
 
@@ -260,11 +262,13 @@ const observeRange = (inst) => {
   const paintOne = (el) => {
     if (!(el instanceof HTMLElement) || !el.classList.contains('flatpickr-day')) return;
     if (el.classList.contains('inRange')) {
-      el.style.background  = 'rgba(128,128,0,.24)';
-      el.style.borderColor = 'transparent';
-      el.style.boxShadow   = 'none';
-      el.style.color       = '#111';
-    } else if (
+      el.style.setProperty('background', 'rgba(128,128,0,.24)', 'important');
+      el.style.setProperty('background-image', 'none', 'important');
+      el.style.setProperty('border-color', 'transparent', 'important');
+      el.style.setProperty('box-shadow', 'none', 'important');
+      el.style.setProperty('-webkit-box-shadow', 'none', 'important');
+      el.style.setProperty('color', '#111', 'important');
+    } else if ( ...
       !el.classList.contains('startRange') &&
       !el.classList.contains('endRange') &&
       !el.classList.contains('selected')
