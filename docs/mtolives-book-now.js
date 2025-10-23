@@ -249,6 +249,20 @@ const paintInRange = (inst) => {
 };
 
 
+// Run paint after Flatpickr finishes its internal updates
+const schedulePaint = (inst) => {
+  const run = () => paintInRange(inst);
+  // a few passes to catch late class changes from rangePlugin
+  requestAnimationFrame(() => { run(); requestAnimationFrame(run); });
+  setTimeout(run, 0);
+  setTimeout(run, 60);
+};
+
+
+
+
+
+      
 
       
       const fp = flatpickr(inputIn, {
@@ -272,8 +286,9 @@ const paintInRange = (inst) => {
         },
 
 
+  schedulePaint(inst);
 
-onValueUpdate: (_dates, _str, inst) => paintInRange(inst),
+  onValueUpdate: (_dates, _str, inst) => schedulePaint(inst),
 
 
         
