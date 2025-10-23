@@ -237,75 +237,11 @@ const positionPin = (inst, side) => {
 };
 
 
-// Force brand color into the in-range cells (beats any theme)
-const paintInRange = (inst) => {
-  const cells = inst.calendarContainer.querySelectorAll('.flatpickr-day.inRange');
-  cells.forEach(el => {
-    el.style.setProperty('background', 'rgba(128,128,0,.24)', 'important');
-    el.style.setProperty('background-image', 'none', 'important');
-    el.style.setProperty('border-color', 'transparent', 'important');
-    el.style.setProperty('box-shadow', 'none', 'important');
-    el.style.setProperty('-webkit-box-shadow', 'none', 'important');
-    el.style.setProperty('color', '#111', 'important');
-  });
-};
 
 
 
 
 
-// Observe class flips + new cells from rangePlugin and enforce olive tint inline
-const observeRange = (inst) => {
-  if (inst._rangeObs) return; // one observer per instance
-  const c = inst.calendarContainer;
-
-  const paintOne = (el) => {
-    if (!(el instanceof HTMLElement) || !el.classList.contains('flatpickr-day')) return;
-    if (el.classList.contains('inRange')) {
-      el.style.setProperty('background', 'rgba(128,128,0,.24)', 'important');
-      el.style.setProperty('background-image', 'none', 'important');
-      el.style.setProperty('border-color', 'transparent', 'important');
-      el.style.setProperty('box-shadow', 'none', 'important');
-      el.style.setProperty('-webkit-box-shadow', 'none', 'important');
-      el.style.setProperty('color', '#111', 'important');
-    } else if ( ...
-      !el.classList.contains('startRange') &&
-      !el.classList.contains('endRange') &&
-      !el.classList.contains('selected')
-    ) {
-      el.style.background = '';
-      el.style.borderColor = '';
-      el.style.boxShadow = '';
-      el.style.color = '';
-    }
-  };
-
-  const paintAll = () => c.querySelectorAll('.flatpickr-day').forEach(paintOne);
-
-  // paint current state
-  paintAll();
-
-  const obs = new MutationObserver((mutations) => {
-    let repaint = false;
-    for (const m of mutations) {
-      if (m.type === 'attributes' && m.attributeName === 'class') {
-        paintOne(m.target);
-      }
-      if (m.type === 'childList' && (m.addedNodes?.length || m.removedNodes?.length)) {
-        repaint = true; // cells rebuilt; repaint everything
-      }
-    }
-    if (repaint) paintAll();
-  });
-
-  obs.observe(c, {
-    attributes: true,
-    attributeFilter: ['class'],
-    childList: true,
-    subtree: true,
-  });
-  inst._rangeObs = obs;
-};
 
 
 
@@ -337,17 +273,13 @@ const observeRange = (inst) => {
 
           ensurePin(inst);
           positionPin(inst, openedBy === 'out' ? 'end' : 'start');
-          // observeRange(inst);
-
+   
 
 
           
         },
 
 
-
-
-  onValueUpdate: (_dates, _str, inst) => paintInRange(inst),
 
 
         
