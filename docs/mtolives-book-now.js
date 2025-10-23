@@ -148,6 +148,32 @@
 }
 
 
+
+/* Darken disabled / out-of-month days */
+.flatpickr-day.disabled,
+.flatpickr-day.notAllowed,
+.flatpickr-day.prevMonthDay,
+.flatpickr-day.nextMonthDay{
+  color: #8b8b8b !important;
+  opacity: .65;
+  background: transparent !important;
+  border-color: transparent !important;
+  cursor: not-allowed;
+}
+.flatpickr-day.disabled:hover,
+.flatpickr-day.notAllowed:hover,
+.flatpickr-day.prevMonthDay:hover,
+.flatpickr-day.nextMonthDay:hover{
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+
+
+
+
+
+
         
         </style>
         <div class=\"bar ${labels === 'none' ? 'hideLabel' : ''}\"> 
