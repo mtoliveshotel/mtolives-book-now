@@ -252,7 +252,52 @@ const paintInRange = (inst) => {
 
 
 
+// Observe class flips from rangePlugin and enforce olive tint inline
+const observeRange = (inst) => {
+  if (inst._rangeObs) return; // one observer per instance
+  const c = inst.calendarContainer;
 
+  const apply = (el) => {
+    if (!el.classList.contains('flatpickr-day')) return;
+    if (el.classList.contains('inRange')) {
+      el.style.background   = 'rgba(128,128,0,.24)';
+      el.style.borderColor  = 'transparent';
+      el.style.boxShadow    = 'none';
+      el.style.color        = '#111';
+    } else if (
+      !el.classList.contains('startRange') &&
+      !el.classList.contains('endRange') &&
+      !el.classList.contains('selected')
+    ) {
+      // clean up if it leaves the range
+      el.style.background = el.style.borderColor = el.style.boxShadow = el.style.color = '';
+    }
+  };
+
+  // paint existing state immediately
+  c.querySelectorAll('.flatpickr-day').forEach(apply);
+
+  const obs = new MutationObserver((mutations) => {
+    for (const m of mutations) {
+      if (m.type === 'attributes' && m.attributeName === 'class' && m.target instanceof HTMLElement) {
+        apply(m.target);
+      }
+    }
+  });
+
+  obs.observe(c, { attributes: true, attributeFilter: ['class'], subtree: true });
+  inst._rangeObs = obs;
+};
+
+
+
+
+
+
+
+
+
+      
 
       
 
