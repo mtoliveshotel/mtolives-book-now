@@ -278,7 +278,7 @@ const paintInRange = (inst) => {
         },
 
 
-  PaintInRange(inst);
+
 
   onValueUpdate: (_dates, _str, inst) => paintInRange(inst),
 
