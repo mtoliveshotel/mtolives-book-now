@@ -237,6 +237,16 @@ const positionPin = (inst, side) => {
 };
 
 
+// Force brand color into the in-range cells (beats any theme)
+const paintInRange = (inst) => {
+  const cells = inst.calendarContainer.querySelectorAll('.flatpickr-day.inRange');
+  cells.forEach(el => {
+    el.style.background = 'rgba(128,128,0,.24)';
+    el.style.borderColor = 'transparent';
+    el.style.boxShadow = 'none';
+    el.style.color = '#111';
+  });
+};
 
 
 
@@ -263,6 +273,10 @@ const positionPin = (inst, side) => {
 
 
 
+onValueUpdate: (_dates, _str, inst) => paintInRange(inst),
+
+
+        
         
         
         // Critical: reflow after the shadow <link id="fp-css"> is loaded so headers match grids
