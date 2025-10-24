@@ -293,4 +293,132 @@
       const ensurePin = (inst) => {
         const c = inst.calendarContainer;
         if (!c.querySelector('.mto-pin')) {
-          const pin = document.createElement('div')
+          const pin = document.createElement('div');
+          pin.className = 'mto-pin';
+          c.appendChild(pin);
+        }
+      };
+      const positionPin = (inst, side) => {
+        const c = inst.calendarContainer;
+        const pin = c.querySelector('.mto-pin'); if (!pin) return;
+        const target = (side === 'end' || openedBy === 'out' || document.activeElement === this.#inputOut)
+          ? this.#inputOut : this.#inputIn;
+        const cr = c.getBoundingClientRect();
+        const tr = target.getBoundingClientRect();
+        pin.style.left = `${tr.left + tr.width / 2 - cr.left}px`;
+      };
+
+      this.#fp = flatpickr(this.#inputIn, {
+        plugins: [ new rangePlugin({ input: this.#inputOut }) ],
+        showMonths,
+        appendTo: this.shadowRoot.querySelector('.bar'),
+        static: true,
+        disableMobile: true,
+        minDate: 'today',
+        dateFormat: displayFmt,
+        allowInput: false,
+        closeOnSelect: false,
+
+        onOpen: (_d,_s,inst) => {
+          if (inst.selectedDates[0]) inst.jumpToDate(inst.selectedDates[0], true);
+          pill(inst, openedBy === 'out' ? 'end' : 'start');
+          ensurePin(inst);
+          positionPin(inst, openedBy === 'out' ? 'end' : 'start');
+        },
+
+        // Avoid chevron flash & misaligned header on hard reloads
+        onReady: (_dates, _str, inst) => {
+          const cal  = inst.calendarContainer;
+          const link = this.shadowRoot.getElementById('fp-css');
+          cal.style.visibility = 'hidden';
+          const showAndRedraw = () => {
+            try { inst.redraw && inst.redraw(); } catch {}
+            requestAnimationFrame(() => { try { inst.redraw(); } catch {} cal.style.visibility = 'visible'; });
+            setTimeout(() => { try { inst.redraw(); } catch {} cal.style.visibility = 'visible'; }, 120);
+          };
+          if (link && !link.sheet) link.addEventListener('load', showAndRedraw, { once:true });
+          else showAndRedraw();
+        },
+
+        onChange: (dates,_str,inst) => {
+          if (mutating) return;
+
+          // helper must be defined BEFORE first use; uses lexical `this`
+          const setDateInterim = (anchor, asEnd = false) => {
+            if (asEnd){
+              setDateSilently(inst, [anchor]);
+              this.#inputIn.value  = '';
+              this.#inputOut.value = inst.formatDate(anchor, displayFmt);
+              setTimeout(() => {
+                openedBy = 'in';
+                this.#inputIn.focus();
+                inst.jumpToDate(anchor, true);
+                pill(inst,'start');
+              }, 0);
+            } else {
+              setDateSilently(inst, [anchor]);
+              this.#mirrorInputs(inst);
+              this.#inputOut.value = '';
+              setTimeout(() => {
+                openedBy = 'out';
+                this.#inputOut.focus();
+                inst.jumpToDate(anchor, true);
+                pill(inst,'end');
+              }, 0);
+            }
+          };
+
+          if (dates.length === 0){
+            this.#inputIn.value = this.#inputOut.value = '';
+            return;
+          }
+
+          if (dates.length === 1){
+            this.#mirrorInputs(inst);
+            if (openedBy === 'in') { setTimeout(() => this.#inputOut.focus(), 0); pill(inst,'end'); }
+            else                   { setTimeout(() => this.#inputIn .focus(), 0); pill(inst,'start'); }
+            return;
+          }
+
+          let [s,e] = dates;
+
+          // If starting from check-in and user clicked earlier/same day → re-anchor start only
+          if (openedBy === 'in' && e.getTime() <= s.getTime()){
+            setDateInterim(s);
+            return;
+          }
+          // If starting from check-out and user clicked before start → treat click as new END anchor
+          if (openedBy === 'out' && e.getTime() <= s.getTime()){
+            setDateInterim(e, /*asEnd*/ true);
+            return;
+          }
+
+          // Enforce minimum nights
+          const nights = Math.round((e - s) / 86400000);
+          const minNights = Math.max(1, Number(this.getAttribute('min-nights') || '1'));
+          if (nights < minNights){
+            setDateInterim(s);
+            return;
+          }
+
+          this.#mirrorInputs(inst);
+          setTimeout(() => inst.close(), 0);
+        }
+      });
+
+      // BOOK NOW handoff
+      btn.addEventListener('click', () => {
+        const url = this.getAttribute('book-url') || '';
+        const [s,e] = this.#fp.selectedDates;
+        if (!url || !s || !e) return;
+        const q = new URLSearchParams({ checkin: fmtYMD(s), checkout: fmtYMD(e) });
+        location.href = `${url}?${q.toString()}`;
+      });
+
+      // reflect alignment preference
+      this.setAttribute('align', align);
+    }
+  }
+
+  customElements.define('mtolives-book-now', MtOlivesBookNow);
+})();
