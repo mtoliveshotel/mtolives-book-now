@@ -29,6 +29,11 @@
   });
 
   class MtOlivesBookNow extends HTMLElement {
+    // private-ish instance slots (declare to satisfy the JS engine)
+    #fp;         // flatpickr instance
+    #inputIn;    // DOM <input> for check-in
+    #inputOut;   // DOM <input> for check-out
+
     static get observedAttributes () {
       return [
         'book-url',
@@ -163,7 +168,7 @@
 
     
     // reflect label attributes into UI + placeholders
-    #applyLabels(){
+    FapplyLabels(){
       const r = this.shadowRoot;
       const [labIn, labOut] = r.querySelectorAll('.group > label');
       const inputIn  = r.getElementById('checkin');
@@ -203,7 +208,7 @@
 
     
     
-    connectedCallback(){ this.#applyLabels(); this.init(); }
+    connectedCallback(){ this.applyLabels(); this.init(); }
     
     attributeChangedCallback (name, oldVal, newVal) {
       if (oldVal === newVal) return;
@@ -215,7 +220,7 @@
         case 'label-checkout':
         case 'label-choose-start':   // NEW
         case 'label-choose-end':     // NEW
-          this.#applyLabels?.();
+          this.applyLabels?.();
     
           // If the calendar is open, also refresh the little intent pill text
           if (this.#fp && this.#fp.calendarContainer) {
