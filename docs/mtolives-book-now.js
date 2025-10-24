@@ -29,23 +29,26 @@
   });
 
   class MtOlivesBookNow extends HTMLElement {
-    static get observedAttributes() {
+    static get observedAttributes () {
       return [
         'book-url',
         'show-months',
+        'popup',
         'display-format',
         'min-nights',
+        'max-nights',
         'align',
         'labels',
         'accent',
         'rounded',
         'label-checkin',
         'label-checkout',
+        // NEW:
         'label-choose-start',
         'label-choose-end'
       ];
     }
-
+    
     get i18n() {
       return {
         checkin:      this.getAttribute('label-checkin')      || 'Check-in',
@@ -201,13 +204,49 @@
     
     
     connectedCallback(){ this.#applyLabels(); this.init(); }
-
-    attributeChangedCallback(name){
-      if (name === 'labels' || name === 'label-checkin' || name === 'label-checkout') {
-        this.#applyLabels();
+    
+    attributeChangedCallback (name, oldVal, newVal) {
+      if (oldVal === newVal) return;
+    
+      switch (name) {
+        // Any of the label-related attributes should re-apply labels and placeholders
+        case 'labels':
+        case 'label-checkin':
+        case 'label-checkout':
+        case 'label-choose-start':   // NEW
+        case 'label-choose-end':     // NEW
+          this.#applyLabels?.();
+    
+          // If the calendar is open, also refresh the little intent pill text
+          if (this.#fp && this.#fp.calendarContainer) {
+            const pillEl = this.#fp.calendarContainer.querySelector('.fp-intent-pill');
+            if (pillEl) {
+              // Which side is currently “active” (best-effort)
+              const activeIsOut =
+                (this.shadowRoot?.activeElement === this.#inputOut) ||
+                (document.activeElement === this.#inputOut);
+              pillEl.textContent = activeIsOut
+                ? this.i18n.chooseEnd
+                : this.i18n.chooseStart;
+            }
+          }
+          break;
+    
+        // If the display format changes, update the picker + mirror the values
+        case 'display-format':
+          if (this.#fp) {
+            this.#fp.set('dateFormat', this.i18n.displayFmt);
+            this.#mirrorInputs?.(this.#fp); // keep inputs in sync with new format
+          }
+          break;
+    
+        // Other attributes can keep using whatever behavior you already have
+        default:
+          // no-op
+          break;
       }
     }
-
+    
     async ensureFlatpickr(){
       if (window.flatpickr) return;
       const LOCAL = './vendor/flatpickr';
