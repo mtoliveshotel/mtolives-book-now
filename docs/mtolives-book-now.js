@@ -227,6 +227,7 @@
       const shouldHide = hide === 'hidden' || hide === 'none' || hide === 'false';
       if (wrap) wrap.classList.toggle('hideLabel', shouldHide);
     
+      
       // When labels are hidden, mirror text into placeholders for clarity
       if (inputIn && inputOut) {
         if (shouldHide) {
@@ -244,6 +245,8 @@
         }
       }
 
+
+      
       
     }
 
@@ -309,37 +312,48 @@
         inputOut.value = inst.formatDate(d[1], displayFmt);
       };
 
+      
+
+      // ---- Labels & guidance pulled from attributes (visible to helpers below) ----
+      const LABEL_IN   = this.getAttribute('label-checkin')       || 'Check-in';
+      const LABEL_OUT  = this.getAttribute('label-checkout')      || 'Check-out';
+      const CHOOSE_IN  = this.getAttribute('label-choose-start')  || 'Choose check-in';
+      const CHOOSE_OUT = this.getAttribute('label-choose-end')    || 'Choose check-out';
+      
       const pill = (inst, side) => {
         const c = inst.calendarContainer;
         let x = c.querySelector('.fp-intent-pill');
         const { chooseStart, chooseEnd } = this.i18n;
-        const text = side === 'end' ? chooseEnd : chooseStart;
-        if (!x){ x = document.createElement('div'); x.className = 'fp-intent-pill'; c.insertBefore(x, c.firstChild); }
+        const text = side === 'end' ? CHOOSE_OUT : CHOOSE_IN;   // ← uses the outer-scope constants
+        if (!x) { x = document.createElement('div'); x.className = 'fp-intent-pill'; c.insertBefore(x, c.firstChild); }
         x.textContent = text;
       };
 
+
+
       
-// --- pointer that follows the active input ---
-const ensurePin = (inst) => {
-  const c = inst.calendarContainer;
-  if (!c.querySelector('.mto-pin')) {
-    const pin = document.createElement('div');
-    pin.className = 'mto-pin';
-    c.appendChild(pin);
-  }
-};
-const positionPin = (inst, side) => {
-  const c = inst.calendarContainer;
-  const pin = c.querySelector('.mto-pin');
-  if (!pin) return;
-  // choose target input based on focus/openedBy or explicit side
-  const target = (side === 'end' || openedBy === 'out' || document.activeElement === inputOut)
-    ? inputOut : inputIn;
-  const cr = c.getBoundingClientRect();
-  const tr = target.getBoundingClientRect();
-  const left = tr.left + tr.width / 2 - cr.left;
-  pin.style.left = `${left}px`;
-};
+      
+      // --- pointer that follows the active input ---
+      const ensurePin = (inst) => {
+        const c = inst.calendarContainer;
+        if (!c.querySelector('.mto-pin')) {
+          const pin = document.createElement('div');
+          pin.className = 'mto-pin';
+          c.appendChild(pin);
+        }
+      };
+      const positionPin = (inst, side) => {
+        const c = inst.calendarContainer;
+        const pin = c.querySelector('.mto-pin');
+        if (!pin) return;
+        // choose target input based on focus/openedBy or explicit side
+        const target = (side === 'end' || openedBy === 'out' || document.activeElement === inputOut)
+          ? inputOut : inputIn;
+        const cr = c.getBoundingClientRect();
+        const tr = target.getBoundingClientRect();
+        const left = tr.left + tr.width / 2 - cr.left;
+        pin.style.left = `${left}px`;
+      };
 
 
 
