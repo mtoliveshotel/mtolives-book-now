@@ -10,7 +10,13 @@
     s.src = src; s.defer = true; s.onload = res; s.onerror = rej;
     document.head.appendChild(s);
   });
-  const loadCss = (href) => { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); };
+  const loadCss = (href) => {
+    const l = document.createElement('link');
+    l.rel = 'stylesheet';
+    l.href = href;
+    document.head.appendChild(l);
+    return l;
+  };
   const pad = n => String(n).padStart(2, '0');
   const fmtYMD = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
