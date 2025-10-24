@@ -29,10 +29,10 @@
   });
 
   class MtOlivesBookNow extends HTMLElement {
-    // private-ish instance slots (declare to satisfy the JS engine)
+    // private instance slots
     #fp;         // flatpickr instance
-    #inputIn;    // DOM <input> for check-in
-    #inputOut;   // DOM <input> for check-out
+    #inputIn;    // <input id="checkin">
+    #inputOut;   // <input id="checkout">
 
     static get observedAttributes () {
       return [
@@ -48,18 +48,19 @@
         'rounded',
         'label-checkin',
         'label-checkout',
-        // NEW:
         'label-choose-start',
         'label-choose-end'
       ];
     }
-    
+
+    // Centralized i18n that always reads current attributes
     get i18n() {
       return {
-        checkin:      this.getAttribute('label-checkin')      || 'Check-in',
-        checkout:     this.getAttribute('label-checkout')     || 'Check-out',
-        chooseStart:  this.getAttribute('label-choose-start') || 'Choose check-in',
-        chooseEnd:    this.getAttribute('label-choose-end')   || 'Choose check-out',
+        checkin     : this.getAttribute('label-checkin')      || 'Check-in',
+        checkout    : this.getAttribute('label-checkout')     || 'Check-out',
+        chooseStart : this.getAttribute('label-choose-start') || 'Choose check-in',
+        chooseEnd   : this.getAttribute('label-choose-end')   || 'Choose check-out',
+        displayFmt  : this.getAttribute('display-format')     || 'd M Y',
       };
     }
 
@@ -133,7 +134,7 @@
             color: #111 !important;
           }
 
-          /* Disabled + out-of-month numerals just darker than default; no pill */
+          /* Disabled + out-of-month numerals slightly darker than default; no pill */
           .flatpickr-calendar .flatpickr-day[aria-disabled="true"],
           .flatpickr-calendar .flatpickr-day.flatpickr-disabled,
           .flatpickr-calendar .flatpickr-day.prevMonthDay,
@@ -164,94 +165,87 @@
       `;
     }
 
-
-
-    
-    // reflect label attributes into UI + placeholders
-    FapplyLabels(){
+    // --- public: reflect label attributes into UI + placeholders
+    applyLabels(){
       const r = this.shadowRoot;
       const [labIn, labOut] = r.querySelectorAll('.group > label');
       const inputIn  = r.getElementById('checkin');
       const inputOut = r.getElementById('checkout');
 
-      const tIn  = this.getAttribute('label-checkin')  || 'Check-in';
-      const tOut = this.getAttribute('label-checkout') || 'Check-out';
-      if (labIn)  labIn.textContent  = tIn;
-      if (labOut) labOut.textContent = tOut;
+      // visible label text
+      if (labIn)  labIn.textContent  = this.i18n.checkin;
+      if (labOut) labOut.textContent = this.i18n.checkout;
 
+      // show/hide the visual labels
       const hide = (this.getAttribute('labels') || '').toLowerCase();
       const wrap = r.querySelector('.bar');
       const shouldHide = hide === 'hidden' || hide === 'none' || hide === 'false';
       if (wrap) wrap.classList.toggle('hideLabel', shouldHide);
-     
-      this.i18n = {
-        checkin     : this.getAttribute('label-checkin')      || 'Check-in',
-        checkout    : this.getAttribute('label-checkout')     || 'Check-out',
-        chooseStart : this.getAttribute('label-choose-start') || 'Choose check-in',
-        chooseEnd   : this.getAttribute('label-choose-end')   || 'Choose check-out',
-        displayFmt  : this.getAttribute('display-format')     || 'd M Y'
-      };
-    
-      // Placeholders logic (now using this.i18n)
+
+      // placeholders
       if (inputIn && inputOut) {
         if (shouldHide) {
+          // labels hidden → placeholders *are* the labels
           inputIn.placeholder  = this.i18n.checkin;
           inputOut.placeholder = this.i18n.checkout;
         } else {
+          // labels visible → keep minimal, localized placeholders
           inputIn.placeholder  = this.i18n.checkin;
           inputOut.placeholder = this.i18n.checkout;
         }
       }
     }
 
+    // keep inputs in sync with the current picker + format
+    #mirrorInputs(inst = this.#fp){
+      if (!inst || !this.#inputIn || !this.#inputOut) return;
+      const df = inst.config?.dateFormat || this.i18n.displayFmt;
+      const d = inst.selectedDates;
+      if (d.length === 0){ this.#inputIn.value = this.#inputOut.value = ''; return; }
+      if (d.length === 1){ this.#inputIn.value = inst.formatDate(d[0], df); this.#inputOut.value = ''; return; }
+      this.#inputIn.value  = inst.formatDate(d[0], df);
+      this.#inputOut.value = inst.formatDate(d[1], df);
+    }
 
-
-    
-    
     connectedCallback(){ this.applyLabels(); this.init(); }
-    
+
     attributeChangedCallback (name, oldVal, newVal) {
       if (oldVal === newVal) return;
-    
+
       switch (name) {
         // Any of the label-related attributes should re-apply labels and placeholders
         case 'labels':
         case 'label-checkin':
         case 'label-checkout':
-        case 'label-choose-start':   // NEW
-        case 'label-choose-end':     // NEW
+        case 'label-choose-start':
+        case 'label-choose-end':
           this.applyLabels?.();
-    
+
           // If the calendar is open, also refresh the little intent pill text
           if (this.#fp && this.#fp.calendarContainer) {
             const pillEl = this.#fp.calendarContainer.querySelector('.fp-intent-pill');
             if (pillEl) {
-              // Which side is currently “active” (best-effort)
               const activeIsOut =
                 (this.shadowRoot?.activeElement === this.#inputOut) ||
                 (document.activeElement === this.#inputOut);
-              pillEl.textContent = activeIsOut
-                ? this.i18n.chooseEnd
-                : this.i18n.chooseStart;
+              pillEl.textContent = activeIsOut ? this.i18n.chooseEnd : this.i18n.chooseStart;
             }
           }
           break;
-    
+
         // If the display format changes, update the picker + mirror the values
         case 'display-format':
           if (this.#fp) {
             this.#fp.set('dateFormat', this.i18n.displayFmt);
-            this.#mirrorInputs?.(this.#fp); // keep inputs in sync with new format
+            this.#mirrorInputs(); // keep inputs in sync with new format
           }
           break;
-    
-        // Other attributes can keep using whatever behavior you already have
+
         default:
-          // no-op
           break;
       }
     }
-    
+
     async ensureFlatpickr(){
       if (window.flatpickr) return;
       const LOCAL = './vendor/flatpickr';
@@ -273,48 +267,32 @@
       }
 
       const r        = this.shadowRoot;
-      const inputIn  = r.getElementById('checkin');
-      const inputOut = r.getElementById('checkout');
+      this.#inputIn  = r.getElementById('checkin');
+      this.#inputOut = r.getElementById('checkout');
       const btn      = r.getElementById('book');
 
       const showMonths = Number(this.getAttribute('show-months') || '2');
-      const displayFmt = this.getAttribute('display-format') || 'd M Y';
+      const displayFmt = this.i18n.displayFmt;
       const align      = this.getAttribute('align') || 'center';
       const minNights  = Math.max(1, Number(this.getAttribute('min-nights') || '1'));
 
       // remember which input opened the calendar
       let openedBy = 'in';
-      inputIn .addEventListener('mousedown', () => { openedBy = 'in';  }, { capture:true });
-      inputOut.addEventListener('mousedown', () => { openedBy = 'out'; }, { capture:true });
+      this.#inputIn .addEventListener('mousedown', () => { openedBy = 'in';  }, { capture:true });
+      this.#inputOut.addEventListener('mousedown', () => { openedBy = 'out'; }, { capture:true });
 
       // prevent onChange recursion
       let mutating = false;
       const setDateSilently = (inst, arr) => { mutating = true; try { inst.setDate(Array.isArray(arr)?arr:[arr], false); } finally { mutating = false; } };
 
-      const mirrorInputs = (inst) => {
-        const d = inst.selectedDates;
-        if (d.length === 0){ inputIn.value = ''; inputOut.value = ''; return; }
-        if (d.length === 1){ inputIn.value = inst.formatDate(d[0], displayFmt); inputOut.value = ''; return; }
-        inputIn.value  = inst.formatDate(d[0], displayFmt);
-        inputOut.value = inst.formatDate(d[1], displayFmt);
-      };
-
-
       // top “intent” pill inside the calendar
       const pill = (inst, side) => {
         const c = inst.calendarContainer;
         let x = c.querySelector('.fp-intent-pill');
-        if (!x) {
-          x = document.createElement('div');
-          x.className = 'fp-intent-pill';
-          c.insertBefore(x, c.firstChild);
-        }
+        if (!x) { x = document.createElement('div'); x.className = 'fp-intent-pill'; c.insertBefore(x, c.firstChild); }
         x.textContent = side === 'end' ? this.i18n.chooseEnd : this.i18n.chooseStart;
       };
 
-      
-      
-      
       // little pointer that follows the focused field
       const ensurePin = (inst) => {
         const c = inst.calendarContainer;
@@ -327,15 +305,15 @@
       const positionPin = (inst, side) => {
         const c = inst.calendarContainer;
         const pin = c.querySelector('.mto-pin'); if (!pin) return;
-        const target = (side === 'end' || openedBy === 'out' || document.activeElement === inputOut)
-          ? inputOut : inputIn;
+        const target = (side === 'end' || openedBy === 'out' || document.activeElement === this.#inputOut)
+          ? this.#inputOut : this.#inputIn;
         const cr = c.getBoundingClientRect();
         const tr = target.getBoundingClientRect();
         pin.style.left = `${tr.left + tr.width / 2 - cr.left}px`;
       };
 
-      const fp = flatpickr(inputIn, {
-        plugins: [ new rangePlugin({ input: inputOut }) ],
+      this.#fp = flatpickr(this.#inputIn, {
+        plugins: [ new rangePlugin({ input: this.#inputOut }) ],
         showMonths,
         appendTo: this.shadowRoot.querySelector('.bar'),
         static: true,
@@ -368,12 +346,12 @@
 
         onChange: (dates,_str,inst) => {
           if (mutating) return;
-          if (dates.length === 0){ inputIn.value = inputOut.value = ''; return; }
+          if (dates.length === 0){ this.#inputIn.value = this.#inputOut.value = ''; return; }
 
           if (dates.length === 1){
-            mirrorInputs(inst);
-            if (openedBy === 'in') { setTimeout(() => inputOut.focus(), 0); pill(inst,'end'); }
-            else                   { setTimeout(() => inputIn .focus(), 0); pill(inst,'start'); }
+            this.#mirrorInputs(inst);
+            if (openedBy === 'in') { setTimeout(() => this.#inputOut.focus(), 0); pill(inst,'end'); }
+            else                   { setTimeout(() => this.#inputIn .focus(), 0); pill(inst,'start'); }
             return;
           }
 
@@ -397,20 +375,21 @@
             return;
           }
 
-          mirrorInputs(inst);
+          this.#mirrorInputs(inst);
           setTimeout(() => inst.close(), 0);
 
+          const self = this;
           function setDateInterim(anchor, asEnd){
             if (asEnd){
               setDateSilently(inst, [anchor]);
-              inputIn.value = '';
-              inputOut.value = inst.formatDate(anchor, displayFmt);
-              setTimeout(() => { openedBy='in'; inputIn.focus(); inst.jumpToDate(anchor, true); pill(inst,'start'); }, 0);
+              self.#inputIn.value = '';
+              self.#inputOut.value = inst.formatDate(anchor, displayFmt);
+              setTimeout(() => { openedBy='in'; self.#inputIn.focus(); inst.jumpToDate(anchor, true); pill(inst,'start'); }, 0);
             } else {
               setDateSilently(inst, [anchor]);
-              mirrorInputs(inst);
-              inputOut.value = '';
-              setTimeout(() => { openedBy='out'; inputOut.focus(); inst.jumpToDate(anchor, true); pill(inst,'end'); }, 0);
+              self.#mirrorInputs(inst);
+              self.#inputOut.value = '';
+              setTimeout(() => { openedBy='out'; self.#inputOut.focus(); inst.jumpToDate(anchor, true); pill(inst,'end'); }, 0);
             }
           }
         }
@@ -419,7 +398,7 @@
       // BOOK NOW handoff
       btn.addEventListener('click', () => {
         const url = this.getAttribute('book-url') || '';
-        const [s,e] = fp.selectedDates;
+        const [s,e] = this.#fp.selectedDates;
         if (!url || !s || !e) return;
         const q = new URLSearchParams({ checkin: fmtYMD(s), checkout: fmtYMD(e) });
         location.href = `${url}?${q.toString()}`;
