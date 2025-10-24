@@ -55,18 +55,25 @@
         'label-checkin',
         'label-checkout',
         'label-choose-start',
-        'label-choose-end'
+        'label-choose-end',
+        'placeholder-checkin',   // NEW
+        'placeholder-checkout'   // NEW
       ];
     }
 
     // Centralized i18n that always reads current attributes
     get i18n() {
+      const labIn  = this.getAttribute('label-checkin')      || 'Check-in';
+      const labOut = this.getAttribute('label-checkout')     || 'Check-out';
       return {
-        checkin     : this.getAttribute('label-checkin')      || 'Check-in',
-        checkout    : this.getAttribute('label-checkout')     || 'Check-out',
+        checkin     : labIn,
+        checkout    : labOut,
         chooseStart : this.getAttribute('label-choose-start') || 'Choose check-in',
         chooseEnd   : this.getAttribute('label-choose-end')   || 'Choose check-out',
         displayFmt  : this.getAttribute('display-format')     || 'd M Y',
+        // NEW — placeholders fall back to label text if not provided
+        placeholderCheckin  : this.getAttribute('placeholder-checkin')  || labIn,
+        placeholderCheckout : this.getAttribute('placeholder-checkout') || labOut,
       };
     }
 
@@ -177,23 +184,20 @@
       const [labIn, labOut] = r.querySelectorAll('.group > label');
       const inputIn  = r.getElementById('checkin');
       const inputOut = r.getElementById('checkout');
-
+    
       // visible label text
       if (labIn)  labIn.textContent  = this.i18n.checkin;
       if (labOut) labOut.textContent = this.i18n.checkout;
-
+    
       // show/hide the visual labels
       const hide = (this.getAttribute('labels') || '').toLowerCase();
       const wrap = r.querySelector('.bar');
       const shouldHide = hide === 'hidden' || hide === 'none' || hide === 'false';
       if (wrap) wrap.classList.toggle('hideLabel', shouldHide);
-
-      // placeholders
-      if (inputIn && inputOut) {
-        // keep placeholders aligned with label text
-        inputIn.placeholder  = this.i18n.checkin;
-        inputOut.placeholder = this.i18n.checkout;
-      }
+    
+      // placeholders (NEW: independent from labels)
+      if (inputIn)  inputIn.placeholder  = this.i18n.placeholderCheckin;
+      if (inputOut) inputOut.placeholder = this.i18n.placeholderCheckout;
     }
 
     // keep inputs in sync with the current picker + format
