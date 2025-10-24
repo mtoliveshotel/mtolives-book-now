@@ -156,6 +156,9 @@
       `;
     }
 
+
+
+    
     // reflect label attributes into UI + placeholders
     #applyLabels(){
       const r = this.shadowRoot;
@@ -172,20 +175,31 @@
       const wrap = r.querySelector('.bar');
       const shouldHide = hide === 'hidden' || hide === 'none' || hide === 'false';
       if (wrap) wrap.classList.toggle('hideLabel', shouldHide);
-
+     
+      this.i18n = {
+        checkin     : this.getAttribute('label-checkin')      || 'Check-in',
+        checkout    : this.getAttribute('label-checkout')     || 'Check-out',
+        chooseStart : this.getAttribute('label-choose-start') || 'Choose check-in',
+        chooseEnd   : this.getAttribute('label-choose-end')   || 'Choose check-out',
+        displayFmt  : this.getAttribute('display-format')     || 'd M Y'
+      };
+    
+      // Placeholders logic (now using this.i18n)
       if (inputIn && inputOut) {
         if (shouldHide) {
-          // placeholders mirror your visible labels when labels are hidden
-          inputIn.placeholder  = tIn  ?? this.i18n.checkin;
-          inputOut.placeholder = tOut ?? this.i18n.checkout;
+          inputIn.placeholder  = this.i18n.checkin;
+          inputOut.placeholder = this.i18n.checkout;
         } else {
-          // localized placeholders when labels are visible
           inputIn.placeholder  = this.i18n.checkin;
           inputOut.placeholder = this.i18n.checkout;
         }
       }
     }
 
+
+
+    
+    
     connectedCallback(){ this.#applyLabels(); this.init(); }
 
     attributeChangedCallback(name){
@@ -241,19 +255,22 @@
         inputOut.value = inst.formatDate(d[1], displayFmt);
       };
 
-      // labels used by helpers (from attributes)
-      const CHOOSE_IN  = this.i18n.chooseStart;
-      const CHOOSE_OUT = this.i18n.chooseEnd;
 
       // top “intent” pill inside the calendar
       const pill = (inst, side) => {
         const c = inst.calendarContainer;
         let x = c.querySelector('.fp-intent-pill');
-        const text = side === 'end' ? CHOOSE_OUT : CHOOSE_IN;
-        if (!x){ x = document.createElement('div'); x.className = 'fp-intent-pill'; c.insertBefore(x, c.firstChild); }
-        x.textContent = text;
+        if (!x) {
+          x = document.createElement('div');
+          x.className = 'fp-intent-pill';
+          c.insertBefore(x, c.firstChild);
+        }
+        x.textContent = side === 'end' ? this.i18n.chooseEnd : this.i18n.chooseStart;
       };
 
+      
+      
+      
       // little pointer that follows the focused field
       const ensurePin = (inst) => {
         const c = inst.calendarContainer;
