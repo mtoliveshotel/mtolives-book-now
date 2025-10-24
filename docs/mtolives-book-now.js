@@ -30,9 +30,37 @@
 
   class MtOlivesBookNow extends HTMLElement {
     static get observedAttributes() {
-      return ['book-url','show-months','display-format','min-nights','align','labels','accent','rounded','label-checkin','label-checkout'];
+      return ['book-url',
+              'show-months',
+              'display-format',
+              'min-nights',
+              'align',
+              'labels',
+              'accent',
+              'rounded',
+              'label-checkin',
+              'label-checkout',
+              'label-choose-start',
+              'label-choose-end'
+             ];
     }
 
+    attributeChangedCallback(name, oldV, newV) {
+      if (oldV === newV) return;
+      // If UI is already built, refresh texts; if not, the init() will read them
+      if (this.updateLabels) this.updateLabels();
+    }
+
+    get i18n() {
+      return {
+        checkin:      this.getAttribute('label-checkin')      || 'Check-in',
+        checkout:     this.getAttribute('label-checkout')     || 'Check-out',
+        chooseStart:  this.getAttribute('label-choose-start') || 'Choose check-in',
+        chooseEnd:    this.getAttribute('label-choose-end')   || 'Choose check-out',
+      };
+    }
+
+    
     
     constructor(){
       super();
@@ -202,14 +230,21 @@
       // When labels are hidden, mirror text into placeholders for clarity
       if (inputIn && inputOut) {
         if (shouldHide) {
-          inputIn.placeholder  = tIn;
-          inputOut.placeholder = tOut;
+          // tIn/tOut should already be your visible label strings (Arrival/Departure, etc.)
+          inputIn.placeholder  = tIn ?? this.i18n.checkin;
+          inputOut.placeholder = tOut ?? this.i18n.checkout;
         } else {
-          // keep placeholders minimal when labels show
-          inputIn.placeholder  = 'Check-in';
-          inputOut.placeholder = 'Check-out';
+          // keep placeholders, but make them localized (no hard-coded English)
+          inputIn.placeholder  = this.i18n.checkin;
+          inputOut.placeholder = this.i18n.checkout;
+          // If you actually want “minimal” placeholders when labels are visible,
+          // you can use '' (empty) or a format hint instead:
+          // inputIn.placeholder = inputOut.placeholder = '';
+          // or: inputIn.placeholder = inputOut.placeholder = this.formatHint;  // if you have one
         }
       }
+
+      
     }
 
 
@@ -277,7 +312,8 @@
       const pill = (inst, side) => {
         const c = inst.calendarContainer;
         let x = c.querySelector('.fp-intent-pill');
-        const text = side === 'end' ? 'Choose check-out' : 'Choose check-in';
+        const { chooseStart, chooseEnd } = this.i18n;
+        const text = side === 'end' ? chooseEnd : chooseStart;
         if (!x){ x = document.createElement('div'); x.className = 'fp-intent-pill'; c.insertBefore(x, c.firstChild); }
         x.textContent = text;
       };
