@@ -134,19 +134,6 @@
 
 
 
-          /* Bridge color for exactly 1-night ranges (adjacent start/end days) */
-          .mto-one-night .flatpickr-day.startRange{
-            /* right half = range tint, left half = accent on the start day */
-            background-image: linear-gradient(to right, var(--accent) 0 50%, var(--range) 50% 100%) !important;
-            background-color: var(--accent) !important;
-            color: #fff !important;
-          }
-          .mto-one-night .flatpickr-day.endRange{
-            /* left half = range tint, right half = accent on the end day */
-            background-image: linear-gradient(to left, var(--accent) 0 50%, var(--range) 50% 100%) !important;
-            background-color: var(--accent) !important;
-            color: #fff !important;
-          }
 
 
 
