@@ -121,19 +121,21 @@
             color:#111!important;
           }
 
-          /* 1-night bridge: recolor Flatpickr’s endpoint connector (was theme blue) */
-          .mto-one-night .flatpickr-day.startRange,
-          .mto-one-night-preview .flatpickr-day.startRange{
-            box-shadow: 5px 0 0 var(--range) !important;   /* connector to the right */
-          }
           
+
+          /* Kill the 1-night connector entirely (hover preview + final selection) */
+          .mto-one-night .flatpickr-day.startRange,
+          .mto-one-night-preview .flatpickr-day.startRange,
           .mto-one-night .flatpickr-day.endRange,
           .mto-one-night-preview .flatpickr-day.endRange{
-            box-shadow: -5px 0 0 var(--range) !important;  /* connector to the left */
+            box-shadow: none !important;
           }
 
-
-
+          /* Neutralize Flatpickr’s default blue connector globally */
+          .flatpickr-day.startRange,
+          .flatpickr-day.endRange{
+            box-shadow: none !important;
+          }
 
 
 
