@@ -76,5 +76,3 @@ The format is based on **Keep a Changelog** and this project adheres to **Semant
 - `<script src="./mtolives-book-now.js?v=0.4.6" defer></script>`
 - Optional tokens/placeholder updates as needed.
 ````
-
-Either one is fine. If you later want clickable diffs, we can add compare links at the bottom.
