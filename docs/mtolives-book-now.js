@@ -121,6 +121,20 @@
             color:#111!important;
           }
 
+          /* Bridge color for exactly 1-night ranges (adjacent start/end days) */
+          .mto-one-night .flatpickr-day.startRange{
+            /* right half = range tint, left half = accent on the start day */
+            background-image: linear-gradient(to right, var(--accent) 0 50%, var(--range) 50% 100%) !important;
+            background-color: var(--accent) !important;
+            color: #fff !important;
+          }
+          .mto-one-night .flatpickr-day.endRange{
+            /* left half = range tint, right half = accent on the end day */
+            background-image: linear-gradient(to left, var(--accent) 0 50%, var(--range) 50% 100%) !important;
+            background-color: var(--accent) !important;
+            color: #fff !important;
+          }
+
           .flatpickr-day:not(.selected):not(.startRange):not(.endRange):not(.disabled):hover{
             background:var(--hover-day)!important;
             color:#000!important;border-color:transparent!important;
@@ -254,6 +268,13 @@
         pin.style.left=`${tr.left+tr.width/2-cr.left}px`;
       };
 
+      const setOneNightClass = (inst) => {
+        const c = inst.calendarContainer;
+        const d = inst.selectedDates || [];
+        const isOneNight = (d.length === 2) && Math.round((d[1] - d[0]) / 86400000) === 1;
+        c.classList.toggle('mto-one-night', isOneNight);
+      };
+
       this.#fp = flatpickr(this.#inputIn, {
         plugins: [ new rangePlugin({ input: this.#inputOut }) ],
         showMonths, appendTo: this.shadowRoot.querySelector('.bar'),
@@ -264,6 +285,7 @@
           if(inst.selectedDates[0]) inst.jumpToDate(inst.selectedDates[0],true);
           pill(inst, openedBy==='out'?'end':'start');
           ensurePin(inst); positionPin(inst, openedBy==='out'?'end':'start');
+          setOneNightClass(inst);
         },
 
         onReady: (_d,_s,inst)=>{
@@ -290,13 +312,14 @@
 
           if(dates.length===0){ this.#inputIn.value=this.#inputOut.value=''; return; }
 
-          if(dates.length===1){
+          if (dates.length === 1){
             this.#mirrorInputs(inst);
-            if(openedBy==='in'){ setTimeout(()=>this.#inputOut.focus(),0); pill(inst,'end'); }
-            else              { setTimeout(()=>this.#inputIn.focus(),0);  pill(inst,'start'); }
+            setOneNightClass(inst); // clears if previously set
+            if (openedBy === 'in') { setTimeout(() => this.#inputOut.focus(), 0); pill(inst,'end'); }
+            else                   { setTimeout(() => this.#inputIn .focus(), 0); pill(inst,'start'); }
             return;
           }
-
+          
           let [s,e]=dates;
           if(openedBy==='in' && e.getTime()<=s.getTime()){ setDateInterim(s); return; }
           if(openedBy==='out'&& e.getTime()<=s.getTime()){ setDateInterim(e,true); return; }
@@ -310,6 +333,7 @@
           if(maxN>0 && nights > maxN){ setDateInterim(s,false,`(max ${maxN} nights)`); return; }
 
           this.#mirrorInputs(inst);
+          setOneNightClass(inst);   // sets the bridge class if nights === 1
           setTimeout(()=>inst.close(),0);
         }
       });
