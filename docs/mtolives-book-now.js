@@ -121,6 +121,19 @@
             color:#111!important;
           }
 
+          /* 1-night bridge: recolor Flatpickr’s endpoint connector (was theme blue) */
+          .mto-one-night .flatpickr-day.startRange,
+          .mto-one-night-preview .flatpickr-day.startRange{
+            box-shadow: 5px 0 0 var(--range) !important;   /* connector to the right */
+          }
+          
+          .mto-one-night .flatpickr-day.endRange,
+          .mto-one-night-preview .flatpickr-day.endRange{
+            box-shadow: -5px 0 0 var(--range) !important;  /* connector to the left */
+          }
+
+
+
           /* Bridge color for exactly 1-night ranges (adjacent start/end days) */
           .mto-one-night .flatpickr-day.startRange{
             /* right half = range tint, left half = accent on the start day */
@@ -134,6 +147,8 @@
             background-color: var(--accent) !important;
             color: #fff !important;
           }
+
+
 
           .flatpickr-day:not(.selected):not(.startRange):not(.endRange):not(.disabled):hover{
             background:var(--hover-day)!important;
@@ -275,6 +290,20 @@
         c.classList.toggle('mto-one-night', isOneNight);
       };
 
+      // Preview helper: when one date is selected and the hovered day is exactly ±1,
+      // flip on a class so the connector uses your --range color during hover.
+      const setOneNightPreview = (inst, hoveredDate) => {
+        const d = inst.selectedDates || [];
+        const isPreviewOneNight =
+          d.length === 1 && hoveredDate &&
+          Math.abs(Math.round((hoveredDate - d[0]) / 86400000)) === 1;
+      
+        inst.calendarContainer.classList.toggle('mto-one-night-preview', !!isPreviewOneNight);
+      };
+
+      
+      
+      
       this.#fp = flatpickr(this.#inputIn, {
         plugins: [ new rangePlugin({ input: this.#inputOut }) ],
         showMonths, appendTo: this.shadowRoot.querySelector('.bar'),
@@ -284,8 +313,27 @@
         onOpen: (_d,_s,inst)=>{
           if(inst.selectedDates[0]) inst.jumpToDate(inst.selectedDates[0],true);
           pill(inst, openedBy==='out'?'end':'start');
-          ensurePin(inst); positionPin(inst, openedBy==='out'?'end':'start');
+          ensurePin(inst); 
+          positionPin(inst, openedBy==='out'?'end':'start');
+
+          // keep/clear the final-selection class on open
           setOneNightClass(inst);
+          
+          // wire hover preview once
+          const c = inst.calendarContainer;
+          if (!c._mtoHoverWired) {
+            const days = inst.daysContainer;
+            if (days) {
+              days.addEventListener('mouseover', (ev) => {
+                const cell = ev.target.closest('.flatpickr-day');
+                setOneNightPreview(inst, cell ? cell.dateObj : null);
+              });
+              days.addEventListener('mouseleave', () => {
+                setOneNightPreview(inst, null);
+              });
+            }
+            c._mtoHoverWired = true; // avoid duplicate listeners on subsequent opens
+          }
         },
 
         onReady: (_d,_s,inst)=>{
@@ -315,6 +363,7 @@
           if (dates.length === 1){
             this.#mirrorInputs(inst);
             setOneNightClass(inst); // clears if previously set
+            setOneNightPreview(inst, null);
             if (openedBy === 'in') { setTimeout(() => this.#inputOut.focus(), 0); pill(inst,'end'); }
             else                   { setTimeout(() => this.#inputIn .focus(), 0); pill(inst,'start'); }
             return;
@@ -334,6 +383,7 @@
 
           this.#mirrorInputs(inst);
           setOneNightClass(inst);   // sets the bridge class if nights === 1
+          setOneNightPreview(inst, null);
           setTimeout(()=>inst.close(),0);
         }
       });
